@@ -17,16 +17,6 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         Ownable(initialOwner)
     {}
 
-    // Not sure if needed
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    // Not sure if needed
-    function unpause() public onlyOwner {
-        _unpause();
-    }
-
     // Secure minting functionality that allows only the contract owner to mint new tokens
     function safeMint(address to, string memory uri)
         public
@@ -39,6 +29,17 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         return tokenId;
     }
 
+    // --- Pausable Functions ---
+
+    // Function to pause the contract (only owner)
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    // Function to unpause the contract (only owner)
+    function unpause() public onlyOwner {
+        _unpause();
+    }
     // The following functions are overrides required by Solidity.
 
     function _update(address to, uint256 tokenId, address auth)
