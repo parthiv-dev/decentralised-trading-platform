@@ -23,12 +23,22 @@ const networks = {
   }
 };
 
+// Default Hardhat account #0 private key - FOR LOCAL DEVELOPMENT ONLY
+const HARDHAT_ACCOUNT_0_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+
 function App() {
-  // Use library for ethers v5 compatibility if needed, otherwise provider for v6
-  // In v8, provider is often accessed via connector hooks, but library might still work depending on setup
-  const { provider, account, isActive, chainId } = useWeb3React() // Add chainId
+  const { provider: metaMaskProvider, account: metaMaskAccount, isActive: metaMaskIsActive, chainId: metaMaskChainId } = useWeb3React();
   const [selectedNetwork, setSelectedNetwork] = useState('localhost'); // Default to localhost
-  const [pokemonContract, setPokemonContract] = useState(null)
+
+  // State for managing the active signer and account, independent of MetaMask if using Hardhat directly
+  const [currentSigner, setCurrentSigner] = useState(null);
+  const [activeAccount, setActiveAccount] = useState(null);
+  const [isAppActive, setIsAppActive] = useState(false); // Overall app readiness
+  const [isUsingHardhatSigner, setIsUsingHardhatSigner] = useState(false); // True if directly using Hardhat signer
+  const [effectiveChainId, setEffectiveChainId] = useState(null);
+
+
+  const [pokemonContract, setPokemonContract] = useState(null);
   const [platformContract, setPlatformContract] = useState(null)
   const [userPokemonIds, setUserPokemonIds] = useState([])
   const [loading, setLoading] = useState(false)
@@ -43,49 +53,84 @@ function App() {
   // Get current network config based on selection
   const currentNetworkConfig = networks[selectedNetwork];
 
-  // Effect to instantiate contracts and fetch initial data when wallet connects
+  // Effect to determine the active signer, account, and app status
   useEffect(() => {
-    // Reset state if network changes or wallet disconnects
-    setPokemonContract(null);
-    setPlatformContract(null);
-    setUserPokemonIds([]);
-    setError(null);
-    // Don't proceed if wallet not active or provider not ready
-    if (!isActive || !provider) return
+    const initializeSignerAndAccount = async () => {
+      if (selectedNetwork === 'localhost' && isUsingHardhatSigner) {
+        console.log("Attempting to use Hardhat direct signer...");
+        try {
+          const localJsonRpcProvider = new ethers.JsonRpcProvider('http://127.0.0.1:8545');
+          const hardhatWallet = new ethers.Wallet(HARDHAT_ACCOUNT_0_PRIVATE_KEY, localJsonRpcProvider);
+          setCurrentSigner(hardhatWallet);
+          setActiveAccount(await hardhatWallet.getAddress());
+          setIsAppActive(true);
+          setEffectiveChainId(networks.localhost.chainId); // Hardhat's chain ID
+          console.log("Using Hardhat direct signer:", await hardhatWallet.getAddress());
+        } catch (e) {
+          console.error("Failed to initialize Hardhat direct signer:", e);
+          setError("Could not connect to local Hardhat node. Ensure it's running.");
+          setIsAppActive(false);
+          setCurrentSigner(null);
+          setActiveAccount(null);
+        }
+      } else if (metaMaskIsActive && metaMaskProvider) {
+        console.log("Using MetaMask provider...");
+        setCurrentSigner(await metaMaskProvider.getSigner());
+        setActiveAccount(metaMaskAccount);
+        setIsAppActive(true);
+        setEffectiveChainId(metaMaskChainId);
+      } else {
+        console.log("No active provider or signer.");
+        setCurrentSigner(null);
+        setActiveAccount(null);
+        setIsAppActive(false);
+        setEffectiveChainId(null);
+      }
+    };
+
+    initializeSignerAndAccount();
+  }, [selectedNetwork, isUsingHardhatSigner, metaMaskIsActive, metaMaskProvider, metaMaskAccount, metaMaskChainId]);
+
+
+  // Effect to instantiate contracts and fetch initial data
+  useEffect(() => {
+    // Clear contracts if signer/account becomes unavailable
+    if (!isAppActive || !currentSigner || !activeAccount) {
+      setPokemonContract(null);
+      setPlatformContract(null);
+      setUserPokemonIds([]);
+      setLoading(false);
+      return;
+    }
 
     const setupContractsAndFetchData = async () => {
       setLoading(true);
-      setError(null)
+      setError(null); // Clear previous errors
       try {
-        // Get the signer instance from the provider
-        // Ensure provider is available and has getSigner method
-        if (!provider) throw new Error("Provider not available");
-        const signer = await provider.getSigner(); // Use await for ethers v6+
-
         // Instantiate PokemonCard contract
         const pkmnContract = new ethers.Contract(
-          currentNetworkConfig.pokemonCardAddress, // Use address from config
+          currentNetworkConfig.pokemonCardAddress,
           PokemonCardABI.abi,
-          signer
-        )
-        setPokemonContract(pkmnContract)
+          currentSigner // Use the determined signer
+        );
+        setPokemonContract(pkmnContract);
 
         // Instantiate TradingPlatform contract
         const platContract = new ethers.Contract(
-          currentNetworkConfig.tradingPlatformAddress, // Use address from config
-          TradingPlatformABI.abi, // Make sure you import the ABI array correctly
-          signer
-        )
-        setPlatformContract(platContract)
+          currentNetworkConfig.tradingPlatformAddress,
+          TradingPlatformABI.abi,
+          currentSigner // Use the determined signer
+        );
+        setPlatformContract(platContract);
 
-        // --- Example: Fetch user's Pokemon ---
-        if (account) { // Ensure account is available
-          const balanceBigInt = await pkmnContract.balanceOf(account);
+        // Fetch user's Pokemon
+        if (activeAccount) {
+          const balanceBigInt = await pkmnContract.balanceOf(activeAccount);
           const balance = Number(balanceBigInt); // Convert BigInt to Number for loop
           const ids = [];
           // Note: tokenOfOwnerByIndex can be gas intensive for large balances
           for (let i = 0; i < balance; i++) {
-            const tokenId = await pkmnContract.tokenOfOwnerByIndex(account, i);
+            const tokenId = await pkmnContract.tokenOfOwnerByIndex(activeAccount, i);
             ids.push(tokenId.toString()); // Convert BigNumber/BigInt to string
           }
           setUserPokemonIds(ids);
@@ -94,19 +139,20 @@ function App() {
           }
         }
       } catch (err) {
-        console.error("Failed to setup contracts or fetch data:", err)
-        setError(`Failed to load contract data. Make sure you are connected to the ${currentNetworkConfig.name} network.`)
+        console.error("Failed to setup contracts or fetch data:", err);
+        setError(`Failed to load contract data. Ensure you are on the correct network (${currentNetworkConfig.name}) and contracts are deployed.`);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    setupContractsAndFetchData()
-  }, [isActive, provider, account, currentNetworkConfig]); // Add currentNetworkConfig dependency
+    setupContractsAndFetchData();
+  }, [isAppActive, currentSigner, activeAccount, currentNetworkConfig]); // Dependencies
+
   // Effect to check approval status when selected token changes
   useEffect(() => {
     const checkApproval = async () => {
-      if (!pokemonContract || !listTokenId || !account) {
+      if (!pokemonContract || !listTokenId || !activeAccount) {
         setIsApproved(false);
         return;
       }
@@ -120,7 +166,7 @@ function App() {
       }
     };
     checkApproval();
-  }, [pokemonContract, listTokenId, account, currentNetworkConfig.tradingPlatformAddress]); // Add address dependency
+  }, [pokemonContract, listTokenId, activeAccount, currentNetworkConfig.tradingPlatformAddress]);
 
   // Function to handle approving the marketplace contract
   const handleApprove = async () => {
@@ -139,7 +185,7 @@ function App() {
 
   // Function to handle minting a new NFT
   const handleMint = async () => {
-    if (!pokemonContract || !account) return;
+    if (!pokemonContract || !activeAccount || !currentSigner) return;
     // Reset states before starting
     setError(null); // Clear previous errors first
     setMintingStatus('Minting...');
@@ -148,7 +194,7 @@ function App() {
     try {
       // Placeholder metadata URI - replace with actual IPFS hash or URL later
       const placeholderURI = "ipfs://bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"; // Example IPFS hash
-      const tx = await pokemonContract.safeMint(account, placeholderURI);
+      const tx = await pokemonContract.safeMint(activeAccount, placeholderURI);
       setMintingStatus(`Waiting for confirmation (Tx: ${tx.hash})...`); // Show Tx hash
 
       // Wait for confirmation. We will handle potential post-wait errors in finally
@@ -179,12 +225,12 @@ function App() {
         // --- Refresh NFT list within finally block on success ---
         setMintingStatus('Refreshing NFT list...'); // Give feedback during refresh
         try {
-          if (pokemonContract && account) { // Ensure contract and account still valid
-            const balanceBigInt = await pokemonContract.balanceOf(account);
+          if (pokemonContract && activeAccount) { // Ensure contract and account still valid
+            const balanceBigInt = await pokemonContract.balanceOf(activeAccount);
             const balance = Number(balanceBigInt);
             const ids = [];
             for (let i = 0; i < balance; i++) {
-              const tokenId = await pokemonContract.tokenOfOwnerByIndex(account, i);
+              const tokenId = await pokemonContract.tokenOfOwnerByIndex(activeAccount, i);
               ids.push(tokenId.toString());
             }
             setUserPokemonIds(ids); // Update the state directly
@@ -228,7 +274,7 @@ function App() {
   };
 
   // Helper to check if connected wallet network matches selected network
-  const isCorrectNetwork = chainId === currentNetworkConfig.chainId;
+  const isCorrectNetwork = isUsingHardhatSigner ? currentNetworkConfig.chainId === networks.localhost.chainId : effectiveChainId === currentNetworkConfig.chainId;
 
   return (
     <div style={{ padding: 20 }}>
@@ -244,16 +290,30 @@ function App() {
         </select>
       </div>
 
-      <ConnectWallet />
+      {/* Hardhat Signer Toggle - only for localhost */}
+      {selectedNetwork === 'localhost' && (
+        <div style={{ marginBottom: '10px' }}>
+          <label>
+            <input
+              type="checkbox"
+              checked={isUsingHardhatSigner}
+              onChange={(e) => setIsUsingHardhatSigner(e.target.checked)}
+            />
+            Use Hardhat Direct Signer (Bypass MetaMask for Localhost)
+          </label>
+        </div>
+      )}
 
-      {isActive && ( // Use isActive from v8
+      {!isUsingHardhatSigner && <ConnectWallet /> /* Show ConnectWallet if not using Hardhat direct signer */}
+
+      {isAppActive && (
         <>
-          <p>🟢 Connected: {account}</p>
+          <p>🟢 Account: {activeAccount} {isUsingHardhatSigner ? "(Hardhat Direct)" : "(MetaMask)"}</p>
           {error && <p style={{ color: 'red' }}>⚠️ Error: {error}</p>}
 
           {/* Network Mismatch Warning */}
-          {!isCorrectNetwork && provider && (
-            <p style={{ color: 'orange', fontWeight: 'bold' }}>⚠️ Wallet connected to wrong network (Chain ID: {chainId}). Please switch to {currentNetworkConfig.name} (Chain ID: {currentNetworkConfig.chainId}).</p>
+          {!isCorrectNetwork && metaMaskProvider && !isUsingHardhatSigner && (
+            <p style={{ color: 'orange', fontWeight: 'bold' }}>⚠️ Wallet connected to wrong network (Chain ID: {effectiveChainId}). Please switch to {currentNetworkConfig.name} (Chain ID: {currentNetworkConfig.chainId}).</p>
           )}
 
           {loading
