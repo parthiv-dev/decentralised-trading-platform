@@ -27,9 +27,7 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
     constructor(address initialOwner)
         ERC721("PokemonCard", "PKMN")
         Ownable(initialOwner)
-    {
-       _nextTokenId = 1; // Start token IDs from 1 
-    }
+    {}
 
     // START OF NEW CODE
 
