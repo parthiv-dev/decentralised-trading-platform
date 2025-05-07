@@ -1,10 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react' // Added useRef
-import {
-  useAccount,
-  useConnect,
-  useDisconnect,
+import { useAccount, // Removed useConnect, useDisconnect
   useReadContract,
   useReadContracts,
   useWriteContract,
@@ -14,6 +11,9 @@ import {
   useWatchContractEvent, // For listening to contract events
 } from 'wagmi';
 import { parseEther, formatEther, parseAbiItem } from 'viem'; // For converting ETH values and parsing event ABI
+import { AccountConnect } from '../components/AccountConnect'; // New
+import { MintCardForm } from '../components/MintCardForm';   // New
+import { PokemonJsonData, DisplayPokemonData } from '../interfaces'; // New
 
 // --- IMPORTANT: REPLACE THESE WITH YOUR ACTUAL ABIs ---
 const pokemonCardAbi = [
@@ -482,23 +482,13 @@ const pokemonCardAbi = [
       {
         "components": [
           {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "hp",
-            "type": "uint256"
-          },
-          {
             "internalType": "string",
             "name": "name",
             "type": "string"
           },
           {
             "internalType": "uint256",
-            "name": "level",
+            "name": "hp",
             "type": "uint256"
           },
           {
@@ -518,8 +508,18 @@ const pokemonCardAbi = [
           },
           {
             "internalType": "string",
-            "name": "imageURI",
+            "name": "type1",
             "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "type2",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "special",
+            "type": "uint256"
           }
         ],
         "internalType": "struct PokemonCard.Pokemon",
@@ -637,6 +637,46 @@ const pokemonCardAbi = [
         "internalType": "string",
         "name": "uri",
         "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_name",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_hp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_attack",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_defense",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_speed",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_type1",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_type2",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_special",
+        "type": "uint256"
       }
     ],
     "name": "safeMint",
@@ -1884,15 +1924,28 @@ const contractAddresses = {
 
 function App() {
   const account = useAccount()
-  const { connectors, connect, status, error } = useConnect()
-  const { disconnect } = useDisconnect()
   const [newName, setNewName] = useState('')
   const [userPokemonIds, setUserPokemonIds] = useState<string[]>([])
+  const [ownedPokemonDetails, setOwnedPokemonDetails] = useState<DisplayPokemonData[]>([]);
   const [listTokenId, setListTokenId] = useState('');
   const [listPrice, setListPrice] = useState('');
   const [isTokenApproved, setIsTokenApproved] = useState(false);
 
+  // New state for minting
+  const [mintPokemonIdInput, setMintPokemonIdInput] = useState('1'); // Default to Pokemon ID 1
   const [mintStatus, setMintStatus] = useState('');
+
+  // IPFS Configuration
+  const IPFS_METADATA_CID = 'bafybeib3a5is3s42srpxived3bdh7y3vwu6lozo6w7htjedcflnem4c2bu';
+  // const IPFS_IMAGES_CID = 'bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua'; // Not directly used if image URI is in metadata JSON
+  const IPFS_GATEWAY = 'https://ipfs.io/ipfs/';
+
+  // Helper to resolve IPFS URIs
+  const resolveIpfsUri = (ipfsUri?: string) => {
+    if (!ipfsUri || !ipfsUri.startsWith('ipfs://')) return undefined;
+    return ipfsUri.replace('ipfs://', IPFS_GATEWAY);
+  };
+
   const [approveStatus, setApproveStatus] = useState('');
   const [listStatus, setListStatus] = useState('');
   const [burnStatus, setBurnStatus] = useState('');
@@ -1905,13 +1958,8 @@ function App() {
 
   // Marketplace State
   interface MarketplaceItem {
-    listingId: string;
-    seller: `0x${string}`;
-    tokenId: string;
-    price: string; // Formatted ETH
-    priceInWei: bigint;
-    tokenURI?: string;
-    tokenMetadata?: { name?: string; image?: string; description?: string };
+    listingId: string; seller: `0x${string}`; tokenId: string; price: string; priceInWei: bigint;
+    pokemonData?: DisplayPokemonData;
   }
   const [marketplaceListings, setMarketplaceListings] = useState<MarketplaceItem[]>([]);
   const [isLoadingMarketplace, setIsLoadingMarketplace] = useState(false);
@@ -1939,6 +1987,59 @@ function App() {
     enabled: !!account.address && !!POKEMON_CARD_ADDRESS, // Only run if address and contract address are available
   });
 
+  // Helper function to get a specific stat from Pokemon JSON attributes
+  function getStatFromJsonAttributes(attributes: Array<{ trait_type: string; value: string | number }>, trait: string, isNumeric = true): any {
+    const attr = attributes.find(a => a.trait_type.toLowerCase() === trait.toLowerCase());
+    if (!attr) return isNumeric ? 0 : "";
+    if (isNumeric) {
+        const numValue = Number(attr.value);
+        return isNaN(numValue) ? 0 : numValue;
+    }
+    return attr.value.toString();
+  }
+
+  // Reusable function to fetch full Pokemon data (on-chain + off-chain)
+  async function fetchPokemonDisplayData(
+    tokenId: string | bigint,
+    currentPublicClient: typeof publicClient, // Use the specific type
+    pokemonCardAddr: `0x${string}`
+  ): Promise<DisplayPokemonData | null> {
+    if (!currentPublicClient || !pokemonCardAddr) return null;
+    try {
+      const tokenIdBigInt = BigInt(tokenId);
+      const onChainData = await currentPublicClient.readContract({
+        abi: pokemonCardAbi, address: pokemonCardAddr, functionName: 'getPokemon', args: [tokenIdBigInt],
+      }) as { name: string; hp: bigint; attack: bigint; defense: bigint; speed: bigint; type1: string; type2: string; special: bigint };
+
+      const metadataUri = await currentPublicClient.readContract({
+        abi: pokemonCardAbi, address: pokemonCardAddr, functionName: 'tokenURI', args: [tokenIdBigInt],
+      }) as string;
+
+      let imageUrl: string | undefined, description: string | undefined;
+      if (metadataUri) {
+        const resolvedMetadataUrl = resolveIpfsUri(metadataUri);
+        if (resolvedMetadataUrl) {
+          const response = await fetch(resolvedMetadataUrl);
+          if (response.ok) {
+            const json: PokemonJsonData = await response.json();
+            imageUrl = resolveIpfsUri(json.image);
+            description = json.description;
+          } else console.warn(`Failed to fetch metadata for ${tokenIdBigInt} from ${resolvedMetadataUrl}`);
+        }
+      }
+      return {
+        tokenId: tokenIdBigInt.toString(),
+        name: onChainData.name, hp: onChainData.hp.toString(), attack: onChainData.attack.toString(),
+        defense: onChainData.defense.toString(), speed: onChainData.speed.toString(),
+        type1: onChainData.type1, type2: onChainData.type2, special: onChainData.special.toString(),
+        imageUrl, description, metadataUri,
+      };
+    } catch (error) {
+      console.error(`Error fetching display data for token ${tokenId}:`, error);
+      return null;
+    }
+  }
+
   // Read user's Pokemon token IDs (more complex due to loop in old code)
   // This effect will fetch token IDs one by one after balance is known
   useEffect(() => {
@@ -1946,16 +2047,19 @@ function App() {
       if (!publicClient) {
         // console.warn("Public client not available for fetching token IDs yet.");
         setUserPokemonIds([]);
+        setOwnedPokemonDetails([]);
         return;
       }
       if (pokemonBalance === undefined || !account.address || !POKEMON_CARD_ADDRESS ) {
         setUserPokemonIds([]);
+        setOwnedPokemonDetails([]);
         return;
       }
 
       const balanceNum = Number(pokemonBalance);
       if (balanceNum === 0) {
         setUserPokemonIds([]);
+        setOwnedPokemonDetails([]);
         return;
       }
 
@@ -1963,6 +2067,7 @@ function App() {
       setFetchTokenIdsError(null);
       const ids: string[] = [];
 
+      // Fetching token IDs
       try {
         for (let i = 0; i < balanceNum; i++) {
           const tokenIdResult = await publicClient.readContract({
@@ -1982,34 +2087,49 @@ function App() {
         }
         setUserPokemonIds(ids);
       } catch (e: any) {
-        console.error("Error fetching token IDs:", e);
+        console.error("Error fetching token IDs (tokenOfOwnerByIndex):", e);
         setFetchTokenIdsError(`Failed to fetch token IDs: ${e.message || 'Unknown error'}`);
         setUserPokemonIds([]); // Clear IDs on error
-      } finally {
+        setOwnedPokemonDetails([]);
+        setIsLoadingTokenIds(false);
+        return; // Stop if IDs couldn't be fetched
+      }
+
+      // Fetching full details for each token ID
+      if (ids.length > 0) {
+        try {
+          const detailsPromises = ids.map(id =>
+            fetchPokemonDisplayData(id, publicClient, POKEMON_CARD_ADDRESS!)
+          );
+          const resolvedDetails = (await Promise.all(detailsPromises)).filter(d => d !== null) as DisplayPokemonData[];
+          setOwnedPokemonDetails(resolvedDetails);
+
+          if (resolvedDetails.length > 0) {
+            if (!listTokenId || !resolvedDetails.some(p => p.tokenId === listTokenId)) {
+              setListTokenId(resolvedDetails[0].tokenId);
+            }
+          } else {
+            setListTokenId('');
+          }
+        } catch (e: any) {
+            console.error("Error fetching Pokemon details for owned tokens:", e);
+            setFetchTokenIdsError(`Failed to fetch Pokemon details: ${e.message || 'Unknown error'}`);
+            setOwnedPokemonDetails([]);
+        }
+      } else {
+        // This case handles if the ids array is empty after attempting to fetch them.
+        // For example, if balanceNum > 0 but tokenOfOwnerByIndex didn't yield any valid IDs,
+        // or if the initial fetch of IDs failed and cleared the ids array.
+        setOwnedPokemonDetails([]);
+        setListTokenId(''); // Also clear listTokenId if there are no details to show
+      }
+    } finally {
         setIsLoadingTokenIds(false);
       }
     };
 
-    if (account.status === 'connected' && POKEMON_CARD_ADDRESS && publicClient) {
-      fetchTokenIds();
-    } else {
-      setUserPokemonIds([]);
-      setIsLoadingTokenIds(false);
-      setFetchTokenIdsError(null);
-    }
-  }, [pokemonBalance, account.address, POKEMON_CARD_ADDRESS, account.status, publicClient]);
-
-  // Effect to update the default selected token ID when the list of user's tokens changes
-  useEffect(() => {
-    if (userPokemonIds.length > 0) {
-      // If listTokenId is not set, or if the currently set listTokenId is no longer in userPokemonIds
-      if (!listTokenId || !userPokemonIds.includes(listTokenId)) {
-        setListTokenId(userPokemonIds[0]); // Default to the first token
-      }
-    } else {
-      setListTokenId(''); // Clear selection if no tokens
-    }
-  }, [userPokemonIds]); // This effect only runs when userPokemonIds changes
+    fetchTokenIds();
+  }, [pokemonBalance, account.address, POKEMON_CARD_ADDRESS, account.status, publicClient, refetchBalance]); // Added refetchBalance as it signals a change
 
   // Check if the selected token is approved for the marketplace
   const { data: approvedAddress, refetch: refetchApprovalStatus, isLoading: isLoadingApprovalStatus } = useReadContract({
@@ -2036,15 +2156,43 @@ function App() {
       return
     }
     setMintStatus('Minting...');
+    if (!mintPokemonIdInput || isNaN(parseInt(mintPokemonIdInput)) || parseInt(mintPokemonIdInput) < 1 || parseInt(mintPokemonIdInput) > 100) {
+      setMintStatus("Please enter a valid Pokemon ID (1-100).");
+      return;
+    }
+
     try {
-      const placeholderURI = "ipfs://bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"; // Example from old code
+      // 1. Construct metadata URI and fetch JSON
+      const metadataIpfsUri = `ipfs://${IPFS_METADATA_CID}/${mintPokemonIdInput}.json`;
+      const resolvedMetadataUrl = resolveIpfsUri(metadataIpfsUri);
+      if (!resolvedMetadataUrl) throw new Error("Could not resolve IPFS metadata URL.");
+
+      const response = await fetch(resolvedMetadataUrl);
+      if (!response.ok) throw new Error(`Failed to fetch Pokemon metadata from IPFS (ID: ${mintPokemonIdInput})`);
+      const jsonData: PokemonJsonData = await response.json();
+
+      // 2. Parse stats from JSON
+      const name = jsonData.name;
+      const hp = BigInt(getStatFromJsonAttributes(jsonData.attributes, "HP"));
+      const attack = BigInt(getStatFromJsonAttributes(jsonData.attributes, "Attack"));
+      const defense = BigInt(getStatFromJsonAttributes(jsonData.attributes, "Defense"));
+      const speed = BigInt(getStatFromJsonAttributes(jsonData.attributes, "Speed"));
+      const type1 = getStatFromJsonAttributes(jsonData.attributes, "Type 1", false);
+      let type2 = getStatFromJsonAttributes(jsonData.attributes, "Type 2", false);
+      if (type2 === 0) type2 = ""; // Ensure type2 is empty string if not found or numeric 0
+      const special = BigInt(getStatFromJsonAttributes(jsonData.attributes, "Special"));
+
+      if (!name || !type1) {
+        throw new Error("Essential Pokemon data (name, type1) missing from metadata.");
+      }
+
+      // 3. Call safeMint
       await writeContractAsync({
         abi: pokemonCardAbi,
         address: POKEMON_CARD_ADDRESS,
         functionName: 'safeMint',
-        args: [account.address, placeholderURI],
+        args: [account.address, metadataIpfsUri, name, hp, attack, defense, speed, type1, type2, special],
       });
-      // isConfirming and isConfirmed will update via useWaitForTransactionReceipt
     } catch (e: any) {
       setMintStatus(`Minting failed: ${e.shortMessage || e.message}`);
       console.error(e);
@@ -2142,7 +2290,7 @@ function App() {
       // Create a unique ID for this specific log emission
       const logId = `${log.transactionHash}-${log.logIndex}`;
 
-      // Check if this log has already been processed
+      // Check if this log has   already been processed
       if (processedItemSoldLogIds.current.has(logId)) {
         // console.log(`[Event Watcher] Log ${logId} (ItemSold) already processed. Skipping.`);
         return;
@@ -2241,14 +2389,26 @@ function App() {
           return;
         }
 
-        const listingsWithMetadataPromises = activeListingsData.map(async (listing) => {
-          let tokenMetadata, tokenURIStr = '';
-          // Simplified metadata fetching for brevity - in real app, handle IPFS, batching, etc.
-          // This part can be expanded significantly.
-          return { ...listing, price: formatEther(listing.priceInWei), tokenURI: tokenURIStr, tokenMetadata };
+        // Fetch full Pokemon data for each listing
+        const finalMarketplaceListingsPromises = activeListingsData.map(async (listing) => {
+          const pokemonData = await fetchPokemonDisplayData(
+            listing.tokenId,
+            publicClient,
+            POKEMON_CARD_ADDRESS!
+          );
+          return {
+            listingId: listing.listingId,
+            seller: listing.seller,
+            tokenId: listing.tokenId,
+            price: formatEther(listing.priceInWei),
+            priceInWei: listing.priceInWei,
+            pokemonData: pokemonData || undefined,
+          };
         });
 
-        const finalMarketplaceListings = await Promise.all(listingsWithMetadataPromises);
+        const resolvedMarketplaceListings = await Promise.all(finalMarketplaceListingsPromises);
+        // Filter out items where Pokemon data fetch might have failed
+        const finalMarketplaceListings = resolvedMarketplaceListings.filter(item => item.pokemonData);
         setMarketplaceListings(finalMarketplaceListings);
       } catch (error: any) {
         setMarketplaceError(`Failed to load marketplace: ${error.message}`);
@@ -2338,36 +2498,7 @@ function App() {
   return (
     <>
       <div>
-        <h2>Account</h2>
-
-        <div>
-          status: {account.status}
-          <br />
-          addresses: {JSON.stringify(account.addresses)}
-          <br />
-          chainId: {account.chainId}
-        </div>
-
-        {account.status === 'connected' && (
-          <button type="button" onClick={() => disconnect()}>
-            Disconnect
-          </button>
-        )}
-      </div>
-
-      <div>
-        <h2>Connect</h2>
-        {connectors.map((connector) => (
-          <button
-            key={connector.uid}
-            onClick={() => connect({ connector })}
-            type="button"
-          >
-            {connector.name}
-          </button>
-        ))}
-        <div>{status}</div>
-        <div>{error?.message}</div>
+        <AccountConnect />
       </div>
 
       {account.status === 'connected' && currentNetworkConfig && (
@@ -2378,43 +2509,49 @@ function App() {
             <p>Pokemon Contract: {POKEMON_CARD_ADDRESS}</p>
             <p>Trading Platform: {TRADING_PLATFORM_ADDRESS}</p>
 
-            {/* Mint Button */}
-            <div style={{ margin: '10px 0', padding: '10px', border: '1px solid #eee' }}>
-              <h3>Mint a Pokémon Card</h3>
-              <button onClick={handleMint} disabled={isWritePending || isConfirming || mintStatus.includes('Minting...') || isLoadingTokenIds}>
-                {isLoadingTokenIds ? 'Refreshing NFTs...' : isWritePending && mintStatus.includes('Minting') ? 'Sending to Wallet...' :
-                 isConfirming && mintStatus.includes('Minting') ? 'Minting (Confirming...)' :
-                 mintStatus || 'Mint Test NFT'}
-              </button>
-              {(writeError && mintStatus) && <p style={{ color: 'red' }}>Mint Error: {writeError.shortMessage || writeError.message}</p>}
-            </div>
+            <MintCardForm
+              mintPokemonIdInput={mintPokemonIdInput}
+              setMintPokemonIdInput={setMintPokemonIdInput}
+              onMint={handleMint}
+              mintStatus={mintStatus}
+              isMintingInProgress={(isWritePending || isConfirming) && mintStatus.includes('Minting')}
+              isLoadingTokenIds={isLoadingTokenIds}
+              mintingError={writeError && mintStatus.includes('Minting') ? writeError : null}
+            />
 
             {/* Owned NFTs and Listing */}
             <div style={{ margin: '10px 0', padding: '10px', border: '1px solid #eee' }}>
               <h3>Your Pokémon Cards</h3>
-              {isLoadingBalance && <p>Loading your balance...</p>}
+              {(isLoadingBalance && !pokemonBalance) && <p>Loading your balance...</p>}
               {isLoadingTokenIds && <p>Fetching your token IDs...</p>}
               {fetchTokenIdsError && <p style={{ color: 'red' }}>{fetchTokenIdsError}</p>}
-              {!isLoadingBalance && !isLoadingTokenIds && !fetchTokenIdsError && userPokemonIds.length > 0 ? (
+              {!isLoadingTokenIds && !fetchTokenIdsError && ownedPokemonDetails.length > 0 ? (
                 <>
-                  <p>IDs: {userPokemonIds.join(', ')} (Balance: {pokemonBalance?.toString()})</p>
-                  <div>
-                    {userPokemonIds.map(id => (
+                  <p>Balance: {pokemonBalance?.toString()}</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+                    {ownedPokemonDetails.map(pokemon => (
+                      <div key={pokemon.tokenId} style={{ border: '1px solid #ddd', padding: '10px', width: '200px' }}>
+                        {pokemon.imageUrl && <img src={pokemon.imageUrl} alt={pokemon.name} style={{ maxWidth: '100%', height: 'auto', marginBottom: '5px' }} />}
+                        <strong>{pokemon.name} (ID: {pokemon.tokenId})</strong>
+                        <p style={{fontSize: '0.8em', margin: '2px 0'}}>HP: {pokemon.hp}, Atk: {pokemon.attack}, Def: {pokemon.defense}</p>
+                        <p style={{fontSize: '0.8em', margin: '2px 0'}}>Speed: {pokemon.speed}, Special: {pokemon.special}</p>
+                        <p style={{fontSize: '0.8em', margin: '2px 0'}}>Types: {pokemon.type1}{pokemon.type2 ? ` / ${pokemon.type2}` : ''}</p>
+                        <button
+                          onClick={() => handleBurn(pokemon.tokenId)}
+                          disabled={isWritePending || isConfirming || (burnStatus.includes('Burning') && burnStatus.includes(pokemon.tokenId))}
+                          style={{ marginTop: '5px', width: '100%' }}
+                        >
+                          { (isWritePending && burnStatus.includes(pokemon.tokenId)) ? 'Sending...' : (isConfirming && burnStatus.includes(pokemon.tokenId)) ? 'Confirming Burn...' : `Burn Token ${pokemon.tokenId}` }
+                        </button>
                       <button
-                        key={`burn-${id}`}
-                        onClick={() => handleBurn(id)}
-                        disabled={isWritePending || isConfirming || (burnStatus.includes('Burning') && burnStatus.includes(id))}
-                        style={{ marginRight: '5px', marginBottom: '5px' }}
-                      >
-                        { (isWritePending && burnStatus.includes(id)) ? 'Sending...' : (isConfirming && burnStatus.includes(id)) ? 'Confirming Burn...' : `Burn Token ${id}` }
-                      </button>
+                      </div>
                     ))}
                     {burnStatus && <p><small>{burnStatus}</small></p>}
                   </div>
                   <h4 style={{marginTop: '15px'}}>List a Card for Sale</h4>
                   <label htmlFor="token-select">Token ID: </label>
                   <select id="token-select" value={listTokenId} onChange={(e) => setListTokenId(e.target.value)}>
-                    {userPokemonIds.map(id => <option key={id} value={id}>{id}</option>)}
+                    {ownedPokemonDetails.map(p => <option key={p.tokenId} value={p.tokenId}>{p.name} (ID: {p.tokenId})</option>)}
                   </select>
                   <br />
                   <label htmlFor="price-input">Price (ETH): </label>
@@ -2443,7 +2580,7 @@ function App() {
                   {listStatus && !listStatus.includes('Listing') && <p><small>{listStatus}</small></p>}
                 </>
               ) : (
-                !isLoadingBalance && !isLoadingTokenIds && !fetchTokenIdsError && <p>You don't own any Pokémon NFTs yet. Try minting one!</p>
+                !isLoadingTokenIds && !fetchTokenIdsError && <p>You don't own any Pokémon NFTs yet. Try minting one!</p>
               )}
             </div>
 
@@ -2488,10 +2625,13 @@ function App() {
                 }}>
                   {marketplaceListings.map((item) => (
                     <div key={item.listingId} style={{ border: '1px solid #ccc', padding: '15px', width: '250px' }}>
-                      {/* Basic metadata display - enhance this */}
-                      {item.tokenMetadata?.image && <img src={item.tokenMetadata.image.replace('ipfs://', 'https://ipfs.io/ipfs/')} alt={item.tokenMetadata.name || `Token ${item.tokenId}`} style={{ maxWidth: '100%', height: 'auto' }} />}
-                      <h4>{item.tokenMetadata?.name || `Token ID: ${item.tokenId}`}</h4>
+                      {item.pokemonData?.imageUrl && <img src={item.pokemonData.imageUrl} alt={item.pokemonData.name || `Token ${item.tokenId}`} style={{ maxWidth: '100%', height: 'auto', marginBottom: '10px' }} />}
+                      <h4>{item.pokemonData?.name || `Token ID: ${item.tokenId}`}</h4>
                       <p>Listing ID: {item.listingId}</p>
+                      {item.pokemonData && (
+                        <p style={{fontSize: '0.8em'}}>HP: {item.pokemonData.hp}, Atk: {item.pokemonData.attack}, Def: {item.pokemonData.defense}<br/>
+                        Types: {item.pokemonData.type1}{item.pokemonData.type2 ? ` / ${item.pokemonData.type2}` : ''}</p>
+                      )}
                       <p>Price: {item.price} ETH</p>
                       <p><small>Seller: {item.seller === account.address ? 'You' : item.seller}</small></p>
                       {item.seller !== account.address && (
