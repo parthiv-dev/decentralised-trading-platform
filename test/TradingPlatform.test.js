@@ -16,12 +16,23 @@ describe("TradingPlatform", function () {
   const FIRST_LISTING_ID = 0n; // Use BigInt for consistency
   const FIRST_AUCTION_ID = 0n; // Use BigInt for consistency
   const NON_EXISTENT_ID = 999n;
-  const TOKEN_ID_0 = 0n;
-  const TOKEN_ID_1 = 1n;
+  // Adjusted Token IDs because PokemonCard now mints starting from ID 1
+  const TOKEN_ID_1_MINTED = 1n; // First token minted
+  const TOKEN_ID_2_MINTED = 2n; // Second token minted
   const TOKEN_URI_0 = "ipfs://test-uri/0";
   const TOKEN_URI_1 = "ipfs://test-uri/1";
 
-
+  // Default parameters for minting Pokemon cards, to keep tests DRY
+  const defaultPokemonMintValues = {
+    name: "TradeTestPoke",
+    hp: 60,
+    attack: 60,
+    defense: 60,
+    speed: 60,
+    type1: "Normal",
+    type2: "Test",
+    special: 60,
+  };
   // Fixture to deploy both contracts and set up accounts/initial state
   async function deployTradingPlatformFixture() {
     // Get signers
@@ -39,16 +50,38 @@ describe("TradingPlatform", function () {
     await tradingPlatform.waitForDeployment();
     const tradingPlatformAddress = await tradingPlatform.getAddress();
 
-    // --- Test Setup ---
-    // Mint token 0 for the seller
-    await pokemonCard.connect(owner).safeMint(seller.address, TOKEN_URI_0);
-    // Seller approves the TradingPlatform contract to manage token 0
-    await pokemonCard.connect(seller).approve(tradingPlatformAddress, TOKEN_ID_0);
-
-    // Mint token 1 for the seller (useful for some tests)
-    await pokemonCard.connect(owner).safeMint(seller.address, TOKEN_URI_1);
+    // --- Test Setup: Mint tokens for the seller ---
+    // Mint token 1 (TOKEN_ID_1_MINTED) for the seller
+    await pokemonCard.connect(owner).safeMint(
+        seller.address,
+        TOKEN_URI_0, // URI for the first token
+        defaultPokemonMintValues.name,
+        defaultPokemonMintValues.hp,
+        defaultPokemonMintValues.attack,
+        defaultPokemonMintValues.defense,
+        defaultPokemonMintValues.speed,
+        defaultPokemonMintValues.type1,
+        defaultPokemonMintValues.type2,
+        defaultPokemonMintValues.special
+    );
     // Seller approves the TradingPlatform contract to manage token 1
-    await pokemonCard.connect(seller).approve(tradingPlatformAddress, TOKEN_ID_1);
+    await pokemonCard.connect(seller).approve(tradingPlatformAddress, TOKEN_ID_1_MINTED);
+
+    // Mint token 2 (TOKEN_ID_2_MINTED) for the seller
+    await pokemonCard.connect(owner).safeMint(
+        seller.address,
+        TOKEN_URI_1, // URI for the second token
+        `${defaultPokemonMintValues.name}Two`, // Slightly different name for uniqueness if needed
+        defaultPokemonMintValues.hp + 5,
+        defaultPokemonMintValues.attack + 5,
+        defaultPokemonMintValues.defense + 5,
+        defaultPokemonMintValues.speed + 5,
+        defaultPokemonMintValues.type1,
+        "Flying", // Different type2
+        defaultPokemonMintValues.special + 5
+    );
+    // Seller approves the TradingPlatform contract to manage token 2
+    await pokemonCard.connect(seller).approve(tradingPlatformAddress, TOKEN_ID_2_MINTED);
 
 
     return {
@@ -60,8 +93,8 @@ describe("TradingPlatform", function () {
       bidder1,
       bidder2,
       otherAccount,
-      tokenId0: TOKEN_ID_0,
-      tokenId1: TOKEN_ID_1,
+      tokenId1: TOKEN_ID_1_MINTED, // Updated constant name for clarity
+      tokenId2: TOKEN_ID_2_MINTED, // Updated constant name for clarity
       pokemonCardAddress,
       tradingPlatformAddress
     };
@@ -82,43 +115,54 @@ describe("TradingPlatform", function () {
   describe("Fixed Price Listings", function () {
 
     it("Should allow a token owner to list an approved item", async function () {
-      const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
+      const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
 
-      // Seller lists the token (tokenId0 was approved in fixture)
-      await expect(tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE))
+      // Seller lists the token (tokenId1 was approved in fixture)
+      await expect(tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE))
         .to.emit(tradingPlatform, "ItemListed")
-        .withArgs(FIRST_LISTING_ID, seller.address, tokenId0, LISTING_PRICE);
+        .withArgs(FIRST_LISTING_ID, seller.address, tokenId1, LISTING_PRICE);
 
       // Check the listing details stored in the contract
       const listing = await tradingPlatform.listings(FIRST_LISTING_ID);
       expect(listing.seller).to.equal(seller.address);
-      expect(listing.tokenId).to.equal(tokenId0);
+      expect(listing.tokenId).to.equal(tokenId1);
       expect(listing.price).to.equal(LISTING_PRICE);
       expect(listing.active).to.be.true;
-      expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId0)).to.be.true;
+      expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId1)).to.be.true;
     });
 
     it("Should fail if non-owner tries to list the token", async function () {
-      const { tradingPlatform, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
+      const { tradingPlatform, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
 
       // Buyer tries to list the seller's token
-      await expect(tradingPlatform.connect(buyer).listItem(tokenId0, LISTING_PRICE))
+      await expect(tradingPlatform.connect(buyer).listItem(tokenId1, LISTING_PRICE))
         .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__NotTokenOwner")
-        .withArgs(buyer.address, tokenId0);
+        .withArgs(buyer.address, tokenId1);
     });
 
     it("Should fail if listing price is zero", async function () {
-      const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
+      const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
 
-      await expect(tradingPlatform.connect(seller).listItem(tokenId0, 0))
+      await expect(tradingPlatform.connect(seller).listItem(tokenId1, 0))
         .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__PriceMustBePositive");
     });
 
     it("Should fail if the contract is not approved to manage the token", async function () {
       const { tradingPlatform, pokemonCard, owner, seller } = await loadFixture(deployTradingPlatformFixture);
       // Mint a *new* token for the seller
-      const newTokenId = 2n; // Use a different ID
-      await pokemonCard.connect(owner).safeMint(seller.address, "ipfs://new-token-2");
+      const newTokenId = 3n; // Next available ID after fixture mints
+      await pokemonCard.connect(owner).safeMint(
+        seller.address,
+        "ipfs://new-token-3",
+        defaultPokemonMintValues.name,
+        defaultPokemonMintValues.hp,
+        defaultPokemonMintValues.attack,
+        defaultPokemonMintValues.defense,
+        defaultPokemonMintValues.speed,
+        defaultPokemonMintValues.type1,
+        defaultPokemonMintValues.type2,
+        defaultPokemonMintValues.special
+      );
 
       // IMPORTANT: Seller does *not* approve the platform for this newTokenId
       const platformAddress = await tradingPlatform.getAddress();
@@ -128,46 +172,46 @@ describe("TradingPlatform", function () {
     });
 
     it("Should fail if token is already listed", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE); // First listing
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE); // First listing
 
         // Try listing the same token again
-        await expect(tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE))
+        await expect(tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE))
             .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__TokenAlreadyListedOrInAuction")
-            .withArgs(tokenId0);
+            .withArgs(tokenId1);
     });
 
     it("Should fail if token is already in an auction", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS); // Token in auction
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS); // Token in auction
 
         // Try listing the same token
-        await expect(tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE))
+        await expect(tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE))
             .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__TokenAlreadyListedOrInAuction")
-            .withArgs(tokenId0);
+            .withArgs(tokenId1);
     });
 
 
     describe("Cancelling Listings", function () {
       it("Should allow the seller to cancel an active listing", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
         // List the item first
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
 
         // Cancel the listing
         await expect(tradingPlatform.connect(seller).cancelListing(FIRST_LISTING_ID))
           .to.emit(tradingPlatform, "ListingCancelled")
-          .withArgs(FIRST_LISTING_ID, seller.address, tokenId0);
+          .withArgs(FIRST_LISTING_ID, seller.address, tokenId1);
 
         // Check listing is inactive
         const listing = await tradingPlatform.listings(FIRST_LISTING_ID);
         expect(listing.active).to.be.false;
-        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId0)).to.be.false;
+        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId1)).to.be.false;
       });
 
       it("Should fail if non-seller tries to cancel the listing", async function () {
-        const { tradingPlatform, seller, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
+        const { tradingPlatform, seller, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
 
         await expect(tradingPlatform.connect(buyer).cancelListing(FIRST_LISTING_ID))
           .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__NotListingSeller")
@@ -175,8 +219,8 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if trying to cancel an already inactive listing", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
         await tradingPlatform.connect(seller).cancelListing(FIRST_LISTING_ID); // Cancel it once
 
         // Try to cancel again
@@ -196,23 +240,23 @@ describe("TradingPlatform", function () {
 
     describe("Buying Items", function () {
       it("Should allow a buyer to purchase an active listing with correct price", async function () {
-        const { tradingPlatform, pokemonCard, seller, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
+        const { tradingPlatform, pokemonCard, seller, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
 
         const sellerInitialPending = await tradingPlatform.pendingWithdrawals(seller.address);
 
         // Buyer buys the item
         await expect(tradingPlatform.connect(buyer).buyItem(FIRST_LISTING_ID, { value: LISTING_PRICE }))
           .to.emit(tradingPlatform, "ItemSold")
-          .withArgs(FIRST_LISTING_ID, buyer.address, seller.address, tokenId0, LISTING_PRICE);
+          .withArgs(FIRST_LISTING_ID, buyer.address, seller.address, tokenId1, LISTING_PRICE);
 
         // Check listing is inactive
         const listing = await tradingPlatform.listings(FIRST_LISTING_ID);
         expect(listing.active).to.be.false;
-        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId0)).to.be.false;
+        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId1)).to.be.false;
 
         // Check NFT ownership transferred
-        expect(await pokemonCard.ownerOf(tokenId0)).to.equal(buyer.address);
+        expect(await pokemonCard.ownerOf(tokenId1)).to.equal(buyer.address);
 
         // Check seller's pending withdrawals increased
         const sellerFinalBalance = await tradingPlatform.pendingWithdrawals(seller.address);
@@ -220,8 +264,8 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if buyer sends insufficient funds", async function () {
-        const { tradingPlatform, seller, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
+        const { tradingPlatform, seller, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
 
         const insufficientAmount = ethers.parseEther("0.5");
         await expect(tradingPlatform.connect(buyer).buyItem(FIRST_LISTING_ID, { value: insufficientAmount }))
@@ -229,8 +273,8 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if buyer sends excessive funds", async function () {
-        const { tradingPlatform, seller, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
+        const { tradingPlatform, seller, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
 
         const excessiveAmount = ethers.parseEther("1.5"); // Contract requires exact price
         await expect(tradingPlatform.connect(buyer).buyItem(FIRST_LISTING_ID, { value: excessiveAmount }))
@@ -238,8 +282,8 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if trying to buy an inactive listing", async function () {
-        const { tradingPlatform, seller, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
+        const { tradingPlatform, seller, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
         await tradingPlatform.connect(seller).cancelListing(FIRST_LISTING_ID); // Cancel to make inactive
 
         await expect(tradingPlatform.connect(buyer).buyItem(FIRST_LISTING_ID, { value: LISTING_PRICE }))
@@ -260,53 +304,64 @@ describe("TradingPlatform", function () {
 
     describe("Creating Auctions", function () {
       it("Should allow a token owner to create an auction for an approved item", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
 
         // Execute the transaction and wait for the receipt
-        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
         const txReceipt = await txResponse.wait();
         const block = await ethers.provider.getBlock(txReceipt.blockNumber);
         const expectedEndTime = BigInt(block.timestamp) + BigInt(AUCTION_DURATION_SECONDS);
 
         await expect(txResponse)
           .to.emit(tradingPlatform, "AuctionCreated")
-          .withArgs(FIRST_AUCTION_ID, seller.address, tokenId0, STARTING_PRICE, expectedEndTime); // Check event args
+          .withArgs(FIRST_AUCTION_ID, seller.address, tokenId1, STARTING_PRICE, expectedEndTime); // Check event args
 
         const auction = await tradingPlatform.auctions(FIRST_AUCTION_ID);
         expect(auction.seller).to.equal(seller.address);
-        expect(auction.tokenId).to.equal(tokenId0);
+        expect(auction.tokenId).to.equal(tokenId1);
         expect(auction.startingPrice).to.equal(STARTING_PRICE);
         expect(auction.endTime).to.equal(expectedEndTime);
         expect(auction.highestBidder).to.equal(ethers.ZeroAddress);
         expect(auction.highestBid).to.equal(0);
         expect(auction.active).to.be.true;
         expect(auction.ended).to.be.false;
-        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId0)).to.be.true;
+        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId1)).to.be.true;
       });
 
       it("Should fail if non-owner tries to create an auction", async function () {
-        const { tradingPlatform, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await expect(tradingPlatform.connect(buyer).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS))
+        const { tradingPlatform, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await expect(tradingPlatform.connect(buyer).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS))
           .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__NotTokenOwner")
-          .withArgs(buyer.address, tokenId0);
+          .withArgs(buyer.address, tokenId1);
       });
 
       it("Should fail if starting price is zero", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await expect(tradingPlatform.connect(seller).createAuction(tokenId0, 0, AUCTION_DURATION_SECONDS))
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await expect(tradingPlatform.connect(seller).createAuction(tokenId1, 0, AUCTION_DURATION_SECONDS))
           .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__PriceMustBePositive");
       });
 
        it("Should fail if duration is zero", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await expect(tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, 0))
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await expect(tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, 0))
           .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__DurationMustBePositive");
       });
 
       it("Should fail if the contract is not approved for the token", async function () {
         const { tradingPlatform, pokemonCard, owner, seller } = await loadFixture(deployTradingPlatformFixture);
-        const newTokenId = 2n;
-        await pokemonCard.connect(owner).safeMint(seller.address, "ipfs://new-token-2");
+        const newTokenId = 3n; // Next available ID
+        await pokemonCard.connect(owner).safeMint(
+            seller.address,
+            "ipfs://new-token-3",
+            defaultPokemonMintValues.name,
+            defaultPokemonMintValues.hp,
+            defaultPokemonMintValues.attack,
+            defaultPokemonMintValues.defense,
+            defaultPokemonMintValues.speed,
+            defaultPokemonMintValues.type1,
+            defaultPokemonMintValues.type2,
+            defaultPokemonMintValues.special
+        );
         // Not approved
         const platformAddress = await tradingPlatform.getAddress();
         await expect(tradingPlatform.connect(seller).createAuction(newTokenId, STARTING_PRICE, AUCTION_DURATION_SECONDS))
@@ -315,23 +370,23 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if token is already listed", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE); // Token is listed
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE); // Token is listed
 
         // Try creating auction for the same token
-        await expect(tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS))
+        await expect(tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS))
             .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__TokenAlreadyListedOrInAuction")
-            .withArgs(tokenId0);
+            .withArgs(tokenId1);
       });
 
       it("Should fail if token is already in another auction", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS); // First auction
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS); // First auction
 
         // Try creating another auction for the same token
-        await expect(tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS))
+        await expect(tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS))
             .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__TokenAlreadyListedOrInAuction")
-            .withArgs(tokenId0);
+            .withArgs(tokenId1);
       });
     });
 
@@ -339,8 +394,8 @@ describe("TradingPlatform", function () {
     describe("Bidding", function () {
 
       it("Should allow a user to place a valid first bid", async function () {
-        const { tradingPlatform, seller, bidder1, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const { tradingPlatform, seller, bidder1, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
 
         await expect(tradingPlatform.connect(bidder1).bid(FIRST_AUCTION_ID, { value: BID_1_AMOUNT }))
           .to.emit(tradingPlatform, "BidPlaced")
@@ -353,8 +408,8 @@ describe("TradingPlatform", function () {
       });
 
        it("Should allow a user to place a higher subsequent bid and refund previous bidder", async function () {
-        const { tradingPlatform, seller, bidder1, bidder2, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const { tradingPlatform, seller, bidder1, bidder2, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
         await tradingPlatform.connect(bidder1).bid(FIRST_AUCTION_ID, { value: BID_1_AMOUNT });
 
         const bidder1InitialPending = await tradingPlatform.pendingWithdrawals(bidder1.address);
@@ -375,8 +430,8 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if bid is lower than starting price (first bid)", async function () {
-        const { tradingPlatform, seller, bidder1, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const { tradingPlatform, seller, bidder1, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
 
         await expect(tradingPlatform.connect(bidder1).bid(FIRST_AUCTION_ID, { value: LOW_BID_AMOUNT }))
           .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__BidTooLow")
@@ -384,8 +439,8 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if bid is not higher than current highest bid", async function () {
-        const { tradingPlatform, seller, bidder1, bidder2, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const { tradingPlatform, seller, bidder1, bidder2, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
         await tradingPlatform.connect(bidder1).bid(FIRST_AUCTION_ID, { value: BID_1_AMOUNT });
 
         // Try bidding same amount
@@ -408,8 +463,8 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if auction is not active (already ended)", async function () {
-        const { tradingPlatform, seller, bidder1, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const { tradingPlatform, seller, bidder1, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
         await tradingPlatform.connect(bidder1).bid(FIRST_AUCTION_ID, { value: BID_1_AMOUNT });
         const auction = await tradingPlatform.auctions(FIRST_AUCTION_ID);
         await time.increaseTo(auction.endTime + 1n);
@@ -422,8 +477,8 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if auction has ended (time passed)", async function () {
-        const { tradingPlatform, seller, bidder1, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const { tradingPlatform, seller, bidder1, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
 
         // Fast forward time
         const auction = await tradingPlatform.auctions(FIRST_AUCTION_ID);
@@ -437,9 +492,9 @@ describe("TradingPlatform", function () {
 
     describe("Ending Auctions", function () {
       it("Should allow ending the auction after duration, transferring NFT and funds", async function () {
-        const { tradingPlatform, pokemonCard, seller, bidder1, tokenId0, otherAccount} = await loadFixture(deployTradingPlatformFixture);
+        const { tradingPlatform, pokemonCard, seller, bidder1, tokenId1, otherAccount} = await loadFixture(deployTradingPlatformFixture);
         // Create auction and get the ID from the event
-        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
         const txReceipt = await txResponse.wait();
         // Find the AuctionCreated event log
         const auctionCreatedLog = txReceipt.logs.find(log => {
@@ -467,20 +522,20 @@ describe("TradingPlatform", function () {
           .withArgs(createdAuctionId, bidder1.address, seller.address, BID_1_AMOUNT);
 
         // Check NFT ownership
-        expect(await pokemonCard.ownerOf(tokenId0)).to.equal(bidder1.address);
+        expect(await pokemonCard.ownerOf(tokenId1)).to.equal(bidder1.address);
         // Check seller pending withdrawals increased by the winning bid amount
         expect(await tradingPlatform.pendingWithdrawals(seller.address)).to.equal(sellerInitialPending + BID_1_AMOUNT);
         // Check auction status
         const endedAuction = await tradingPlatform.auctions(createdAuctionId);
         expect(endedAuction.active).to.be.false;
         expect(endedAuction.ended).to.be.true;
-        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId0)).to.be.false;
+        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId1)).to.be.false;
       });
 
       it("Should allow ending the auction with no bids, emitting cancellation", async function () {
-        const { tradingPlatform, pokemonCard, seller, tokenId0, otherAccount } = await loadFixture(deployTradingPlatformFixture);
+        const { tradingPlatform, pokemonCard, seller, tokenId1, otherAccount } = await loadFixture(deployTradingPlatformFixture);
         // Create auction and get the ID
-        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
         const txReceipt = await txResponse.wait();
         const auctionCreatedLog = txReceipt.logs.find(log => {
              try { return tradingPlatform.interface.parseLog(log)?.name === "AuctionCreated"; } catch (e) { return false; }
@@ -498,20 +553,20 @@ describe("TradingPlatform", function () {
         // End the auction (anyone can call)
         await expect(tradingPlatform.connect(otherAccount).endAuction(createdAuctionId))
           .to.emit(tradingPlatform, "AuctionCancelled") // Check for cancellation event
-          .withArgs(createdAuctionId, seller.address, tokenId0);
+          .withArgs(createdAuctionId, seller.address, tokenId1);
 
         // Check NFT ownership (should still be seller)
-        expect(await pokemonCard.ownerOf(tokenId0)).to.equal(seller.address);
+        expect(await pokemonCard.ownerOf(tokenId1)).to.equal(seller.address);
         // Check auction status
         const endedAuction = await tradingPlatform.auctions(createdAuctionId);
         expect(endedAuction.active).to.be.false;
         expect(endedAuction.ended).to.be.true;
-        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId0)).to.be.false;
+        expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId1)).to.be.false;
       });
 
       it("Should fail if trying to end auction before duration", async function () {
-        const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-        await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
 
         // Don't advance time
         await expect(tradingPlatform.connect(seller).endAuction(FIRST_AUCTION_ID))
@@ -520,9 +575,9 @@ describe("TradingPlatform", function () {
       });
 
       it("Should fail if trying to end an already ended auction", async function () {
-        const { tradingPlatform, seller, bidder1, tokenId0, otherAccount } = await loadFixture(deployTradingPlatformFixture);
+        const { tradingPlatform, seller, bidder1, tokenId1, otherAccount } = await loadFixture(deployTradingPlatformFixture);
         // Create auction and get ID
-        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
         const txReceipt = await txResponse.wait();
         const auctionCreatedLog = txReceipt.logs.find(log => {
              try { return tradingPlatform.interface.parseLog(log)?.name === "AuctionCreated"; } catch (e) { return false; }
@@ -549,9 +604,9 @@ describe("TradingPlatform", function () {
 
     describe("Cancelling Auctions", function () {
         it("Should allow the seller to cancel an active auction with no bids", async function () {
-            const { tradingPlatform, seller, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
+            const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
             // Create auction
-            const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+            const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
             const txReceipt = await txResponse.wait();
             const auctionCreatedLog = txReceipt.logs.find(log => {
                  try { return tradingPlatform.interface.parseLog(log)?.name === "AuctionCreated"; } catch (e) { return false; }
@@ -561,18 +616,18 @@ describe("TradingPlatform", function () {
             // Cancel the auction
             await expect(tradingPlatform.connect(seller).cancelAuction(createdAuctionId))
               .to.emit(tradingPlatform, "AuctionCancelled")
-              .withArgs(createdAuctionId, seller.address, tokenId0);
+              .withArgs(createdAuctionId, seller.address, tokenId1);
 
             // Check auction status
             const cancelledAuction = await tradingPlatform.auctions(createdAuctionId);
             expect(cancelledAuction.active).to.be.false;
             expect(cancelledAuction.ended).to.be.true; // Should be marked as ended
-            expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId0)).to.be.false;
+            expect(await tradingPlatform.tokenIsListedOrInAuction(tokenId1)).to.be.false;
         });
 
         it("Should fail if non-seller tries to cancel the auction", async function () {
-            const { tradingPlatform, seller, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-            await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+            const { tradingPlatform, seller, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+            await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
 
             await expect(tradingPlatform.connect(buyer).cancelAuction(FIRST_AUCTION_ID))
               .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__NotAuctionSeller")
@@ -580,8 +635,8 @@ describe("TradingPlatform", function () {
         });
 
         it("Should fail if trying to cancel an auction with bids", async function () {
-            const { tradingPlatform, seller, bidder1, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
-            await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+            const { tradingPlatform, seller, bidder1, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+            await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
             await tradingPlatform.connect(bidder1).bid(FIRST_AUCTION_ID, { value: BID_1_AMOUNT }); // Place a bid
 
             await expect(tradingPlatform.connect(seller).cancelAuction(FIRST_AUCTION_ID))
@@ -589,8 +644,8 @@ describe("TradingPlatform", function () {
         });
 
         it("Should fail if trying to cancel an already ended auction", async function () {
-            const { tradingPlatform, seller, tokenId0, otherAccount } = await loadFixture(deployTradingPlatformFixture);
-            await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+            const { tradingPlatform, seller, tokenId1, otherAccount } = await loadFixture(deployTradingPlatformFixture);
+            await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
             const auction = await tradingPlatform.auctions(FIRST_AUCTION_ID);
             await time.increaseTo(auction.endTime + 1n);
             await tradingPlatform.connect(otherAccount).endAuction(FIRST_AUCTION_ID); // End it (no bids scenario)
@@ -612,9 +667,9 @@ describe("TradingPlatform", function () {
   describe("Withdrawals", function () {
 
     it("Should allow a seller to withdraw funds after a fixed price sale", async function () {
-      const { tradingPlatform, seller, buyer, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
+      const { tradingPlatform, seller, buyer, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
       // List and sell item
-      await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
+      await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
       await tradingPlatform.connect(buyer).buyItem(FIRST_LISTING_ID, { value: LISTING_PRICE });
 
       const initialBalance = await ethers.provider.getBalance(seller.address);
@@ -640,9 +695,9 @@ describe("TradingPlatform", function () {
     });
 
      it("Should allow a seller to withdraw funds after a successful auction", async function () {
-        const { tradingPlatform, seller, bidder1, tokenId0, otherAccount } = await loadFixture(deployTradingPlatformFixture);
+        const { tradingPlatform, seller, bidder1, tokenId1, otherAccount } = await loadFixture(deployTradingPlatformFixture);
         // Create auction, bid, end auction
-        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
         const txReceipt = await txResponse.wait();
         const auctionCreatedLog = txReceipt.logs.find(log => {
              try { return tradingPlatform.interface.parseLog(log)?.name === "AuctionCreated"; } catch (e) { return false; }
@@ -672,9 +727,9 @@ describe("TradingPlatform", function () {
     });
 
     it("Should allow an outbid bidder to withdraw their refunded bid", async function () {
-      const { tradingPlatform, seller, bidder1, bidder2, tokenId0 } = await loadFixture(deployTradingPlatformFixture);
+      const { tradingPlatform, seller, bidder1, bidder2, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
       // Create auction, bidder1 bids, bidder2 outbids
-      await tradingPlatform.connect(seller).createAuction(tokenId0, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+      await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
       await tradingPlatform.connect(bidder1).bid(FIRST_AUCTION_ID, { value: BID_1_AMOUNT });
       await tradingPlatform.connect(bidder2).bid(FIRST_AUCTION_ID, { value: BID_2_AMOUNT }); // bidder1's bidAmount is now pending
 
@@ -746,11 +801,11 @@ describe("TradingPlatform", function () {
     });
 
     it("Should prevent actions when paused", async function () {
-      const { tradingPlatform, pokemonCard, owner, seller, buyer, bidder1, tokenId0, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+      const { tradingPlatform, pokemonCard, owner, seller, buyer, bidder1, tokenId1, tokenId2 } = await loadFixture(deployTradingPlatformFixture);
 
       // Setup: List item 0, create auction for item 1
-      await tradingPlatform.connect(seller).listItem(tokenId0, LISTING_PRICE);
-      const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+      await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE); // List token 1
+      const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId2, STARTING_PRICE, AUCTION_DURATION_SECONDS); // Auction token 2
       const txReceipt = await txResponse.wait();
       const auctionCreatedLog = txReceipt.logs.find(log => {
            try { return tradingPlatform.interface.parseLog(log)?.name === "AuctionCreated"; } catch (e) { return false; }
@@ -763,8 +818,19 @@ describe("TradingPlatform", function () {
 
       // Test actions that should be paused
       // Need a new token ID (e.g., 2) to test listing/auction creation failure without hitting TokenAlreadyListed
-      const newTokenId = 2n;
-      await pokemonCard.connect(owner).safeMint(seller.address, "ipfs://token2");
+      const newTokenId = 3n; // Next available ID
+      await pokemonCard.connect(owner).safeMint(
+        seller.address,
+        "ipfs://token3",
+        defaultPokemonMintValues.name,
+        defaultPokemonMintValues.hp,
+        defaultPokemonMintValues.attack,
+        defaultPokemonMintValues.defense,
+        defaultPokemonMintValues.speed,
+        defaultPokemonMintValues.type1,
+        defaultPokemonMintValues.type2,
+        defaultPokemonMintValues.special
+      );
       await pokemonCard.connect(seller).approve(await tradingPlatform.getAddress(), newTokenId);
 
       await expect(tradingPlatform.connect(seller).listItem(newTokenId, LISTING_PRICE))

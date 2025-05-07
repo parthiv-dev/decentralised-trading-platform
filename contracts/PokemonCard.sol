@@ -47,7 +47,7 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         // _nextTokenId is incremented *before* _safeMint is called with the *previous* value of _nextTokenId.
         // So, a valid tokenId must be less than the current _nextTokenId.
         // This also correctly handles the case where _nextTokenId is 0 (no tokens minted yet).
-        require(tokenId < _nextTokenId, "PokemonCard: Query for nonexistent token ID.");
+        require(tokenId > 0 && tokenId <= _nextTokenId, "PokemonCard: Query for nonexistent token ID.");
         _;
     }
 
