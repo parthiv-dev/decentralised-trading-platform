@@ -1,5 +1,19 @@
 # Decentralised Trading Platform
 
+## Checklist (to be removed later)
+See TODO in each paragraph!
+
+Have to implement AND explain each criteria in atleast 1 paragraph
+
+
+
+
+
+
+
+
+
+
 ## Table of Contents
 TODO
 
@@ -8,13 +22,21 @@ TODO
 
 ## Introduction
 
+TODO for 1. Overview:
+- blockchain technology
+-NFT concepts
+- Implementation of smart contracts
+- Frontend development
+- Web3 technologies integration
+- Completed function trading platform deployed on local testnet
+
 In this project, we developed a decentralised application (dApp) for trading Pokémon cards.  The project integrates blockchain technology with NFT concepts, requiring implementation of smart contracts, frontend development, and Web3 technologies integration. We deliver a complete, functional trading platform deployed on a local testnet. 
 
-In this [README](README.md) we explain what our project does, how to use it and what the purpose of individual files are(the essential part of every README). 
+In this [README](README.md) we explain what our project does, how to use it and what the purpose of individual files are (the essential part of every README). 
 
 We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve deeper into our design choices and overall work process. We aim to allow the reader hopefully better understand design choices.
 
-## Installation
+## Setup Instruction
 
 TODO: @Matteo:
 
@@ -31,7 +53,23 @@ TODO: @Matteo:
 
 - How to to run tests
 
-## Smart Contracts
+## Architecture Overview
+
+### Smart Contracts
+
+TODO for 3.1. Smart Contracts:
+- NFT contract for Pokemon cards following ERC271 contract
+- Comprehensive metadata for Pokemon characteristics
+- Secure minting functionalities
+- Access control
+
+- Card listing
+- Fixed-price sales
+- Auctions
+- Secure withdrawal patterns
+- Understanding of smart contract optimization
+- Security best practices in implementation
+- Simplicity
 
 We implment two Solidity contracts:
 - [PokemonCard.sol](contracts\PokemonCard.sol)
@@ -43,13 +81,28 @@ We implment two Solidity contracts:
 [TradingPlatform.sol](contracts\TradingPlatform.sol) incoporates [PokemonCard.sol](contracts\PokemonCard.sol) in the sense that one first deploys [PokemonCard.sol](contracts\PokemonCard.sol), receives its contract address and then calls (the constructor of) [TradingPlatform.sol](contracts\TradingPlatform.sol), giving the contract address of [PokemonCard.sol](contracts\PokemonCard.sol) as an input. Furthermore, [TradingPlatform.sol](contracts\TradingPlatform.sol) calls several functions of [PokemonCard.sol](contracts\PokemonCard.sol) in its own functions. 
 
 
-## Frontend Development
+### Frontend Development
 
-## Security Considerations
+TODO for 3.2 Front Development:
+- Intuitive user interface
+- Wallet connection functionality
+- Comprehensive card marketplace and trading interface
+- Proper Web3 integration through event listeners for contract updates, transation handling and wallet integration
 
-## Advanced Enhancements
 
-### IPFS integration for metadata storage
+
+### Security Considerations
+
+- Protection against Reentrancy attacks
+- Access control using function modifiers and role-base access where necessary
+- IF front-running is concern (IS IT?) => afront-running prevention e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive
+operations
+
+- 
+
+### Advanced Enhancements
+
+#### IPFS integration for metadata storage
 
 To be able to view images of pokemons on the web-based trading trading platform we decided to integrate IPFS metadata storage. 
 
@@ -62,6 +115,19 @@ We also rename the original image files from the [kaggle dataset](https://www.ka
 [Pinata Cloud](https://pinata.cloud/) is a 
 
 ## Demonstration
+
+TODO for 
+- Demostrate core functionality + security features while explaining key technical decisions
+- Comprehensive test suite
+
+
+
+## Conclusion
+
+TODO for 2. Learning Objectives:
+- Web3-integrated frontend applications
+- Security best practices in DeFi development
+- Understanding NFT standards + token economics
 
 
 
