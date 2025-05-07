@@ -1,53 +1,46 @@
 import React from 'react';
 
 interface MintCardFormProps {
-  mintPokemonIdInput: string;
-  setMintPokemonIdInput: (value: string) => void;
-  onMint: () => Promise<void>;
+  // Removed: mintPokemonIdInput, setMintPokemonIdInput, isLoadingTokenIds
+  onMint: () => void; // Assuming onMint from page.tsx is now just () => void
   mintStatus: string;
-  isMintingInProgress: boolean; // True if (isWritePending or isConfirming) AND related to minting
-  isLoadingTokenIds: boolean;
-  mintingError: { shortMessage?: string; message: string } | null | undefined;
+  isMintingInProgress: boolean;
+  mintingError: Error | null; // Simplified error type to match page.tsx
+  expectedNextPokemonId?: bigint;
+  maxPokemonIdReached: boolean;
+  isLoadingNextId: boolean;
 }
 
 export function MintCardForm({
-  mintPokemonIdInput,
-  setMintPokemonIdInput,
   onMint,
   mintStatus,
   isMintingInProgress,
-  isLoadingTokenIds,
   mintingError,
+  expectedNextPokemonId,
+  maxPokemonIdReached,
+  isLoadingNextId,
 }: MintCardFormProps) {
-  
-  const getButtonText = () => {
-    if (isLoadingTokenIds) return 'Refreshing NFTs...';
-    if (mintStatus.includes('Sending to Wallet...')) return 'Sending to Wallet...';
-    if (mintStatus.includes('Minting (Confirming...)')) return 'Minting (Confirming...)';
-    if (mintStatus.includes('Minting...')) return 'Processing Mint...'; // Generic "in progress"
-    return mintStatus || `Mint Pokemon #${mintPokemonIdInput || 'ID'}`;
+
+  const buttonText = () => {
+    if (isLoadingNextId) return "Loading Next ID...";
+    if (maxPokemonIdReached) return "All Pokémon Minted!";
+    if (isMintingInProgress) return mintStatus.includes("submitted, awaiting confirmation") ? "Awaiting Confirmation..." : "Minting..."; // More specific for minting
+    return expectedNextPokemonId
+      ? `Mint Next Pokémon (ID: ${expectedNextPokemonId.toString()})`
+      : "Mint Next Pokémon";
   };
 
   return (
     <div style={{ margin: '10px 0', padding: '10px', border: '1px solid #eee' }}>
-      <h3>Mint a New Pokémon Card</h3>
-      <div>
-        <label htmlFor="mint-pokemon-id">Pokemon ID (1-100): </label>
-        <input
-          id="mint-pokemon-id"
-          type="number"
-          value={mintPokemonIdInput}
-          onChange={(e) => setMintPokemonIdInput(e.target.value)}
-          min="1"
-          max="100"
-          style={{ width: '60px', marginRight: '10px' }}
-        />
-        <button onClick={onMint} disabled={isMintingInProgress || isLoadingTokenIds}>
-          {getButtonText()}
-        </button>
-      </div>
-      {mintingError && <p style={{ color: 'red' }}>Mint Error: {mintingError.shortMessage || mintingError.message}</p>}
-      {mintStatus && !mintStatus.includes('Minting...') && !mintStatus.includes('Sending') && !mintStatus.includes('Confirming') && !mintingError && <p><small>{mintStatus}</small></p>}
+      <h4>Mint a New Pokémon Card</h4> {/* Changed from h3 to h4 to match page.tsx structure better */}
+      <button
+        onClick={onMint}
+        disabled={isMintingInProgress || maxPokemonIdReached || isLoadingNextId}
+      >
+        {buttonText()}
+      </button>
+      {mintStatus && <p><small>{mintStatus}</small></p>}
+      {mintingError && <p style={{ color: 'red' }}><small>Error: {mintingError.message}</small></p>}
     </div>
   );
 }

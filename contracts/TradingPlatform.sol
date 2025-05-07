@@ -171,6 +171,7 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     error TradingPlatform__WithdrawalFailed();
     error TradingPlatform__NoFundsToWithdraw(address user);
     error TradingPlatform__AuctionHasBids(); // For cancelling auctions
+    error TradingPlatform__SellerNoLongerOwnsToken(address seller, uint256 tokenId);
 
     // --- Constructor ---
 
@@ -300,13 +301,24 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
         if (!listing.active) revert TradingPlatform__ListingNotActive(listingId);
         if (msg.value != listing.price) revert TradingPlatform__IncorrectPrice();
 
-        // Effects
         address seller = listing.seller;
         uint256 tokenId = listing.tokenId;
+
+        // === New explicit checks before transfer ===
+        // Check if the seller still owns the token at the time of purchase
+        if (pokemonCardContract.ownerOf(tokenId) != seller) {
+            revert TradingPlatform__SellerNoLongerOwnsToken(seller, tokenId);
+        }
+        // Re-check if this contract is still approved for the specific token 
+        // OR if the seller approved all for this contract.
+        // This guards against approval being revoked after listing.
+        if (pokemonCardContract.getApproved(tokenId) != address(this) && 
+            !pokemonCardContract.isApprovedForAll(seller, address(this))) {
+            revert TradingPlatform__NotApprovedForToken(address(this), tokenId);
+        }
+        // === End of new explicit checks ===
+
         uint256 price = listing.price; // Cache price before modifying storage
-        listing.active = false; // Mark listing as inactive
-        tokenIsListedOrInAuction[tokenId] = false; // Mark token as no longer listed
-        pendingWithdrawals[seller] += msg.value; // Credit seller's withdrawable balance
 
         // Interaction
         // Transfer the NFT from the seller to the buyer (msg.sender)
@@ -314,6 +326,11 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
         pokemonCardContract.safeTransferFrom(seller, msg.sender, tokenId);
 
         emit ItemSold(listingId, msg.sender, seller, tokenId, price);
+
+        // Effects (moved after successful transfer to ensure atomicity with transfer)
+        listing.active = false; // Mark listing as inactive
+        tokenIsListedOrInAuction[tokenId] = false; // Mark token as no longer listed
+        pendingWithdrawals[seller] += msg.value; // Credit seller's withdrawable balance
     }
 
     // --- Auction Functions ---

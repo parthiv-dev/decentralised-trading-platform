@@ -70,6 +70,12 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         return _pokemons[tokenId];
     }
 
+    // Function to get the ID that will be assigned to the next token minted
+    function getNextTokenId() external view returns (uint256) {
+        // _nextTokenId stores the ID of the *last* token minted.
+        // So, the next token ID will be _nextTokenId + 1.
+        return _nextTokenId + 1;
+    }
     // END OF NEW CODE
 
     // Secure minting functionality that allows only the contract owner to mint new tokens
