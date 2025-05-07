@@ -8,11 +8,28 @@ import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/
 import {ERC721Pausable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-
+/**
+ * @title PokemonCard NFT Contract
+ * @author DeFi Coursework Group Matteo & Parthiv
+ * @notice This contract manages the creation and ownership of Pokemon Card NFTs.
+ * @dev It implements ERC721 with extensions for enumerability, URI storage, pausable transfers,
+ * burnable tokens, and ownable access control.
+ */
 contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ownable, ERC721Burnable {
+    /// @notice Counter for the next token ID to be minted. Starts at 0, so the first token ID is 1.
     uint256 private _nextTokenId;
 
-    // Struct to hold Pokemon metadata
+    /**
+     * @dev Struct to hold on-chain Pokemon metadata.
+     * @param name The name of the Pokemon.
+     * @param hp Hit Points of the Pokemon.
+     * @param attack Attack stat of the Pokemon.
+     * @param defense Defense stat of the Pokemon.
+     * @param speed Speed stat of the Pokemon.
+     * @param type1 Primary type of the Pokemon (e.g., "Fire", "Water").
+     * @param type2 Secondary type of the Pokemon (e.g., "Flying", can be empty).
+     * @param special Special Attack/Defense stat of the Pokemon.
+     */
     struct Pokemon {
         string name;
         uint256 hp;
@@ -24,62 +41,111 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         uint256 special;
     }
 
-    // Constructor to initialize the contract with the name and symbol of the token
-    // and set the initial owner of the contract
+    /**
+     * @notice Initializes the contract, setting the token name, symbol, and the initial owner.
+     * @param initialOwner The address that will initially own this contract and have administrative privileges.
+     */
     constructor(address initialOwner)
         ERC721("PokemonCard", "PKMN")
         Ownable(initialOwner)
     {}
 
-    // Mapping from TokenId to Pokemon struct (metadata)
+    /// @notice Mapping from a token ID to its on-chain Pokemon metadata.
     mapping(uint256 => Pokemon) private _pokemons;
 
-    // Mapping from user address to minter boolean
+    /// @notice Mapping from an address to a boolean indicating if it's an authorized minter.
+    /// @dev Public visibility creates a getter function `_minters(address) returns (bool)`.
     mapping(address => bool) public _minters;
 
-    // Modifier to check if the caller is authorized (owner or minter) to mint tokens
+    /**
+     * @dev Modifier to restrict access to functions to only authorized minters or the contract owner.
+     * An operation is authorized if `msg.sender` is true in the `_minters` mapping or is the current `owner()`.
+     */
     modifier onlyAuthorized() {
         require(_minters[msg.sender] || owner() == msg.sender, "User not authorized");
         _;
     }
 
-    // Modifier to check if the tokenId exists (is valid)
+    /**
+     * @dev Modifier to check if a `tokenId` corresponds to an existing, minted token.
+     * @param tokenId The ID of the token to check.
+     */
     modifier pokemonExists(uint256 tokenId) {
-        // _nextTokenId is incremented *before* _safeMint is called with the *previous* value of _nextTokenId.
-        // => valid tokenId must be less than the current _nextTokenId.
-        // Also correctly handles the case where _nextTokenId is 0 (no tokens minted yet).
+        // `_nextTokenId` holds the ID of the last token minted.
+        // Valid token IDs are from 1 up to `_nextTokenId`.
         require(tokenId > 0 && tokenId <= _nextTokenId, "PokemonCard: Query for nonexistent token ID.");
         _;
     }
 
-    // Events for minting and setting minters
+    /// @notice Emitted when a new Pokemon card NFT is minted.
+    /// @param minter The address that initiated the minting process.
+    /// @param tokenId The ID of the newly minted token.
     event PokemonMinted(address minter, uint256 tokenId);
+
+    /// @notice Emitted when an address is granted minter privileges.
+    /// @param minter The address that was set as a minter.
     event MinterSetTrue(address minter);
+
+    /// @notice Emitted when an address has its minter privileges revoked.
+    /// @param minter The address that was removed as a minter.
     event MinterSetFalse(address minter);
 
-    // Function to set a user as a minter
+    /**
+     * @notice Grants minter privileges to a specified address.
+     * @dev Can only be called by the contract owner. Emits a {MinterSetTrue} event.
+     * @param _addr The address to grant minter privileges to.
+     */
     function setMinterTrue(address _addr) external onlyOwner {
         _minters[_addr] = true;
         emit MinterSetTrue(_addr);
     }
 
-    // Function to remove a user as a minter
+    /**
+     * @notice Revokes minter privileges from a specified address.
+     * @dev Can only be called by the contract owner. Emits a {MinterSetFalse} event.
+     * @param _addr The address to revoke minter privileges from.
+     */
     function setMinterFalse(address _addr) external onlyOwner {
         _minters[_addr] = false;
         emit MinterSetFalse(_addr);
     }
 
-    // Function to get the metadata of a Pokemon by its tokenId
+    /**
+     * @notice Retrieves the on-chain metadata for a specific Pokemon token.
+     * @dev Requires the `tokenId` to exist.
+     * @param tokenId The ID of the token whose metadata is being queried.
+     * @return Pokemon memory A struct containing the on-chain attributes of the Pokemon.
+     */
     function getPokemon(uint256 tokenId) external view pokemonExists(tokenId) returns (Pokemon memory) {
         return _pokemons[tokenId];
     }
 
-    // Function to get the ID that will be assigned to the next token minted
+    /**
+     * @notice Gets the token ID that will be assigned to the next token minted.
+     * @return uint256 The ID for the next token.
+     */
     function getNextTokenId() external view returns (uint256) {
         return _nextTokenId + 1;
     }
     
-    // Secure minting functionality that allows only the authorized owner to mint new tokens
+    /**
+     * @notice Mints a new Pokemon card NFT and assigns it to the `to` address.
+     * @dev Can only be called by an authorized minter or the contract owner.
+     *      The `tokenId` is determined internally by incrementing `_nextTokenId`.
+     *      On-chain metadata is stored, and an IPFS URI for off-chain metadata is set.
+     *      Emits a {PokemonMinted} event.
+     * @param to The address to receive the newly minted NFT.
+     * @param uri The IPFS URI pointing to the JSON metadata for this token.
+     * @param _name The name of the Pokemon.
+     * @param _hp Hit Points.
+     * @param _attack Attack stat.
+     * @param _defense Defense stat.
+     * @param _speed Speed stat.
+     * @param _type1 Primary type.
+     * @param _type2 Secondary type (can be empty).
+     * @param _special Special stat.
+     * @return tokenId The ID of the newly minted token.
+     */
     function safeMint(
         address to,
         string memory uri, // IPFS URI for the JSON metadata file
@@ -117,18 +183,24 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         return tokenId;
     }
 
-    // Function to pause the contract (only owner)
+    /**
+     * @notice Pauses all token transfers.
+     * @dev Can only be called by the contract owner. See {ERC721Pausable-_pause}.
+     */
     function pause() public onlyOwner {
         _pause();
     }
 
-    // Function to unpause the contract (only owner)
+    /**
+     * @notice Unpauses all token transfers.
+     * @dev Can only be called by the contract owner. See {ERC721Pausable-_unpause}.
+     */
     function unpause() public onlyOwner {
         _unpause();
     }
 
 
-    // The following functions are overrides required by Solidity.
+    // --- Overrides ---
 
     function _update(address to, uint256 tokenId, address auth)
         internal

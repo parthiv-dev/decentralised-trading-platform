@@ -13,7 +13,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TradingPlatform
- * @author [Your Name/Team Name]
+ * @author DeFi Coursework Group Matteo & Parthiv
  * @notice A contract for listing, selling (fixed price), and auctioning ERC721 tokens (e.g., Pokemon Cards).
  * @dev Implements Ownable for access control, Pausable for emergency stops, and ReentrancyGuard for security.
  * Uses custom errors for gas efficiency and clearer revert reasons.
@@ -22,21 +22,21 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     // --- State Variables ---
 
     /// @notice The address of the ERC721 token contract being traded.
-    IERC721 public immutable pokemonCardContract;
+    IERC721 public immutable pokemonCardContract; // Address of the PokemonCard NFT contract
 
     /// @notice Counter to generate unique IDs for fixed-price listings.
-    uint256 private _nextListingId;
+    uint256 private _nextListingId; // Starts at 0, first listing ID will be 0.
     /// @notice Counter to generate unique IDs for auctions.
-    uint256 private _nextAuctionId;
+    uint256 private _nextAuctionId; // Starts at 0, first auction ID will be 0.
 
     // --- Structs ---
 
     /**
      * @dev Represents a fixed-price listing.
      * @param seller The address of the account listing the token.
-     * @param tokenId The ID of the ERC721 token being listed.
-     * @param price The price in wei.
-     * @param active Whether the listing is currently available for purchase.
+     * @param tokenId The ID of the ERC721 token being listed for sale.
+     * @param price The selling price of the token in wei.
+     * @param active A boolean indicating if the listing is currently active and available for purchase.
      */
     struct Listing {
         address seller;
@@ -48,13 +48,13 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     /**
      * @dev Represents an auction.
      * @param seller The address of the account auctioning the token.
-     * @param tokenId The ID of the ERC721 token being auctioned.
+     * @param tokenId The ID of the ERC721 token being put up for auction.
      * @param startingPrice The minimum price for the first bid in wei.
      * @param endTime The Unix timestamp when the auction concludes.
      * @param highestBidder The address of the current highest bidder.
      * @param highestBid The amount of the current highest bid in wei.
-     * @param active True if the auction is currently running (not ended or cancelled).
-     * @param ended True if the auction has been concluded (either sold or cancelled).
+     * @param active A boolean indicating if the auction is currently running (i.e., not yet ended or cancelled).
+     * @param ended A boolean indicating if the auction has been formally concluded (either sold, cancelled, or ended without bids).
      */
     struct Auction {
         address seller;
@@ -70,15 +70,19 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     // --- Mappings ---
 
     /// @notice Mapping from listing ID to Listing details.
+    /// @dev Public visibility creates a getter function `listings(uint256) returns (address, uint256, uint256, bool)`.
     mapping(uint256 => Listing) public listings; // Renamed from fixedPriceListings for consistency with tests
 
     /// @notice Mapping from auction ID to Auction details.
+    /// @dev Public visibility creates a getter function `auctions(uint256) returns (address, uint256, uint256, uint256, address, uint256, bool, bool)`.
     mapping(uint256 => Auction) public auctions;
 
     /// @notice Mapping from user address to their withdrawable balance (from sales or refunded bids).
+    /// @dev Public visibility creates a getter function `pendingWithdrawals(address) returns (uint256)`.
     mapping(address => uint256) public pendingWithdrawals;
 
-    /// @notice Tracks if a token ID is currently involved in an active listing or auction to prevent duplicates.
+    /// @notice Tracks if a token ID is currently involved in an active listing or auction to prevent duplicate listings/auctions.
+    /// @dev Public visibility creates a getter function `tokenIsListedOrInAuction(uint256) returns (bool)`.
     mapping(uint256 => bool) public tokenIsListedOrInAuction;
 
     // --- Events ---
@@ -153,24 +157,63 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     event FundsWithdrawn(address indexed user, uint256 amount);
 
     // --- Errors ---
+    /// @notice Reverts if the caller is not the owner of the specified token.
+    /// @param caller The address of the message sender.
+    /// @param tokenId The ID of the token in question.
     error TradingPlatform__NotTokenOwner(address caller, uint256 tokenId);
+    /// @notice Reverts if a price (for listing or auction start) is not greater than zero.
     error TradingPlatform__PriceMustBePositive();
+    /// @notice Reverts if an auction duration is not greater than zero.
     error TradingPlatform__DurationMustBePositive();
+    /// @notice Reverts if this contract is not approved to manage the specified token.
+    /// @param spender The address that should have been approved (this contract).
+    /// @param tokenId The ID of the token for which approval is missing.
     error TradingPlatform__NotApprovedForToken(address spender, uint256 tokenId);
+    /// @notice Reverts if an attempt is made to list or auction a token that is already actively listed or in an auction.
+    /// @param tokenId The ID of the token that is already engaged in a trade.
     error TradingPlatform__TokenAlreadyListedOrInAuction(uint256 tokenId);
+    /// @notice Reverts if a specified listing ID does not correspond to an existing listing.
+    /// @param listingId The ID of the non-existent listing.
     error TradingPlatform__ListingNotFound(uint256 listingId);
+    /// @notice Reverts if the caller is not the seller of the specified listing.
+    /// @param caller The address of the message sender.
+    /// @param listingId The ID of the listing in question.
     error TradingPlatform__NotListingSeller(address caller, uint256 listingId);
+    /// @notice Reverts if an operation is attempted on a listing that is not currently active.
+    /// @param listingId The ID of the inactive listing.
     error TradingPlatform__ListingNotActive(uint256 listingId);
+    /// @notice Reverts if the ETH value sent with a purchase does not match the listing price.
     error TradingPlatform__IncorrectPrice();
+    /// @notice Reverts if a specified auction ID does not correspond to an existing auction.
+    /// @param auctionId The ID of the non-existent auction.
     error TradingPlatform__AuctionNotFound(uint256 auctionId);
+    /// @notice Reverts if the caller is not the seller of the specified auction.
+    /// @param caller The address of the message sender.
+    /// @param auctionId The ID of the auction in question.
     error TradingPlatform__NotAuctionSeller(address caller, uint256 auctionId);
+    /// @notice Reverts if an operation is attempted on an auction that is not currently active.
+    /// @param auctionId The ID of the inactive auction.
     error TradingPlatform__AuctionNotActive(uint256 auctionId);
+    /// @notice Reverts if a bid is placed on an auction that has already ended.
+    /// @param auctionId The ID of the ended auction.
     error TradingPlatform__AuctionHasEnded(uint256 auctionId);
+    /// @notice Reverts if an attempt is made to end an auction before its designated end time.
+    /// @param auctionId The ID of the auction that has not yet reached its end time.
     error TradingPlatform__AuctionNotEndedYet(uint256 auctionId);
+    /// @notice Reverts if a bid amount is not sufficient (e.g., less than starting price or current highest bid).
+    /// @param requiredBid The minimum bid amount required.
+    /// @param sentBid The bid amount actually sent by the bidder.
     error TradingPlatform__BidTooLow(uint256 requiredBid, uint256 sentBid);
+    /// @notice Reverts if an ETH withdrawal transaction fails.
     error TradingPlatform__WithdrawalFailed();
+    /// @notice Reverts if a user attempts to withdraw funds but has no pending withdrawals.
+    /// @param user The address of the user attempting to withdraw.
     error TradingPlatform__NoFundsToWithdraw(address user);
+    /// @notice Reverts if an attempt is made to cancel an auction that has already received bids.
     error TradingPlatform__AuctionHasBids(); // For cancelling auctions
+    /// @notice Reverts during a sale if the seller no longer owns the token (e.g., transferred it away after listing).
+    /// @param seller The expected seller address.
+    /// @param tokenId The ID of the token.
     error TradingPlatform__SellerNoLongerOwnsToken(address seller, uint256 tokenId);
 
     // --- Constructor ---
@@ -212,7 +255,7 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
      */
     function withdraw() external nonReentrant { // Intentionally NOT whenNotPaused
         uint256 amount = pendingWithdrawals[msg.sender];
-        if (amount == 0) revert TradingPlatform__NoFundsToWithdraw(msg.sender);
+        if (amount == 0) revert TradingPlatform__NoFundsToWithdraw(msg.sender); // Check
 
         // Effects first: Zero out the balance before sending
         pendingWithdrawals[msg.sender] = 0;
@@ -220,7 +263,7 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
         // Interaction last: Send the Ether
         (bool success, ) = msg.sender.call{value: amount}("");
         if (!success) {
-            // If transfer fails, revert the state change (refund the user internally)
+            // If transfer fails, revert the state change (credit the user's balance back internally)
             pendingWithdrawals[msg.sender] = amount;
             revert TradingPlatform__WithdrawalFailed();
         }
@@ -240,14 +283,13 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
      * @return listingId The ID of the newly created listing.
      */
     function listItem(uint256 tokenId, uint256 price) external whenNotPaused returns (uint256) {
-        // Checks
+        // --- Checks ---
         if (price == 0) revert TradingPlatform__PriceMustBePositive();
         if (pokemonCardContract.ownerOf(tokenId) != msg.sender) revert TradingPlatform__NotTokenOwner(msg.sender, tokenId);
         if (pokemonCardContract.getApproved(tokenId) != address(this) && !pokemonCardContract.isApprovedForAll(msg.sender, address(this))) {
              revert TradingPlatform__NotApprovedForToken(address(this), tokenId);
         }
         if (tokenIsListedOrInAuction[tokenId]) revert TradingPlatform__TokenAlreadyListedOrInAuction(tokenId);
-
         // Effects
         uint256 listingId = _nextListingId;
         listings[listingId] = Listing({
@@ -272,11 +314,11 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     function cancelListing(uint256 listingId) external nonReentrant whenNotPaused {
         Listing storage listing = listings[listingId];
 
-        // Checks
+        // --- Checks ---
         if (listing.seller == address(0)) revert TradingPlatform__ListingNotFound(listingId); // Check if listing exists first
         if (listing.seller != msg.sender) revert TradingPlatform__NotListingSeller(msg.sender, listingId);
         if (!listing.active) revert TradingPlatform__ListingNotActive(listingId);
-
+        // --- Effects ---
         // Effects
         uint256 tokenId = listing.tokenId; // Store before modifying storage
         listing.active = false;
@@ -297,7 +339,7 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     function buyItem(uint256 listingId) external payable nonReentrant whenNotPaused {
         Listing storage listing = listings[listingId];
 
-        // Checks
+        // --- Checks ---
         if (!listing.active) revert TradingPlatform__ListingNotActive(listingId);
         if (msg.value != listing.price) revert TradingPlatform__IncorrectPrice();
 
@@ -318,16 +360,15 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
         }
         // === End of new explicit checks ===
 
-        uint256 price = listing.price; // Cache price before modifying storage
+        uint256 price = listing.price; // Cache price before modifying storage (listing.price will be part of the struct that's effectively "cleared")
 
-        // Interaction
+        // --- Interaction ---
         // Transfer the NFT from the seller to the buyer (msg.sender)
         // The contract must be approved by the seller beforehand (checked during listItem)
         pokemonCardContract.safeTransferFrom(seller, msg.sender, tokenId);
 
         emit ItemSold(listingId, msg.sender, seller, tokenId, price);
-
-        // Effects (moved after successful transfer to ensure atomicity with transfer)
+        // --- Effects (after successful transfer) ---
         listing.active = false; // Mark listing as inactive
         tokenIsListedOrInAuction[tokenId] = false; // Mark token as no longer listed
         pendingWithdrawals[seller] += msg.value; // Credit seller's withdrawable balance
@@ -347,7 +388,7 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
      * @return auctionId The ID of the newly created auction.
      */
     function createAuction(uint256 tokenId, uint256 startingPrice, uint256 durationSeconds) external whenNotPaused returns (uint256) {
-        // Checks
+        // --- Checks ---
         if (startingPrice == 0) revert TradingPlatform__PriceMustBePositive();
         if (durationSeconds == 0) revert TradingPlatform__DurationMustBePositive();
         if (pokemonCardContract.ownerOf(tokenId) != msg.sender) revert TradingPlatform__NotTokenOwner(msg.sender, tokenId);
@@ -355,7 +396,6 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
             revert TradingPlatform__NotApprovedForToken(address(this), tokenId);
         }
         if (tokenIsListedOrInAuction[tokenId]) revert TradingPlatform__TokenAlreadyListedOrInAuction(tokenId);
-
         // Effects
         uint256 auctionId = _nextAuctionId;
         uint256 endTime = block.timestamp + durationSeconds;
@@ -389,7 +429,7 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     function bid(uint256 auctionId) external payable nonReentrant whenNotPaused {
         Auction storage auction = auctions[auctionId];
 
-        // Checks
+        // --- Checks ---
         if (!auction.active) revert TradingPlatform__AuctionNotActive(auctionId);
         if (block.timestamp >= auction.endTime) revert TradingPlatform__AuctionHasEnded(auctionId);
 
@@ -397,14 +437,12 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
         uint256 requiredBid = (currentHighestBid == 0) ? auction.startingPrice : currentHighestBid;
 
         if (msg.value <= requiredBid) revert TradingPlatform__BidTooLow(requiredBid, msg.value);
-
-        // Effects
+        // --- Effects & Interactions ---
         address previousHighestBidder = auction.highestBidder;
         uint256 previousHighestBid = auction.highestBid;
 
         auction.highestBidder = msg.sender;
         auction.highestBid = msg.value;
-
         // Interaction (Refund previous bidder)
         if (previousHighestBidder != address(0)) {
             pendingWithdrawals[previousHighestBidder] += previousHighestBid;
@@ -424,12 +462,11 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     function endAuction(uint256 auctionId) external nonReentrant whenNotPaused {
         Auction storage auction = auctions[auctionId];
 
-        // Checks
+        // --- Checks ---
         if (auction.seller == address(0) && auction.tokenId == 0) revert TradingPlatform__AuctionNotFound(auctionId); // Check if auction exists
         if (!auction.active) revert TradingPlatform__AuctionNotActive(auctionId); // Covers ended case too
         if (block.timestamp < auction.endTime) revert TradingPlatform__AuctionNotEndedYet(auctionId);
-
-        // Effects
+        // --- Effects & Interactions ---
         auction.active = false;
         auction.ended = true;
         tokenIsListedOrInAuction[auction.tokenId] = false; // Mark token as available again
@@ -464,13 +501,12 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
     function cancelAuction(uint256 auctionId) external nonReentrant whenNotPaused {
         Auction storage auction = auctions[auctionId];
 
-        // Checks
+        // --- Checks ---
         if (auction.seller == address(0) && auction.tokenId == 0) revert TradingPlatform__AuctionNotFound(auctionId);
         if (auction.seller != msg.sender) revert TradingPlatform__NotAuctionSeller(msg.sender, auctionId);
         if (!auction.active) revert TradingPlatform__AuctionNotActive(auctionId); // Covers ended case too
         if (auction.highestBidder != address(0)) revert TradingPlatform__AuctionHasBids(); // Cannot cancel if bids exist
-
-        // Effects
+        // --- Effects ---
         uint256 tokenId = auction.tokenId; // Store before modifying storage
         auction.active = false;
         auction.ended = true; // Mark as ended to prevent further actions like endAuction
@@ -533,8 +569,7 @@ contract TradingPlatform is Ownable, Pausable, ReentrancyGuard, IERC721Receiver 
 
     /**
      * @dev Required by the ERC721 standard for receiving tokens via safeTransferFrom.
-     * This contract should generally only receive tokens it explicitly pulls via buyItem or endAuction.
-     * We accept the transfer but don't implement specific logic for arbitrary receives.
+     * @notice This contract is designed to receive NFTs only through its explicit trading functions (buyItem, endAuction).
      */
     function onERC721Received(
         address /* operator */,

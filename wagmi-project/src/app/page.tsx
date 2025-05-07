@@ -14,7 +14,11 @@ import { parseEther, formatEther, parseAbiItem, decodeErrorResult } from 'viem';
 import { AccountConnect } from '../components/AccountConnect'; // New
 import { MintCardForm } from '../components/MintCardForm';   // New
 import { PokemonJsonData, DisplayPokemonData } from '../interfaces'; // New
-
+// Extend DisplayPokemonData for listing/auction status
+interface DisplayPokemonDataWithStatus extends DisplayPokemonData {
+  isListed?: boolean; listingId?: string;
+  isInAuction?: boolean; auctionId?: string; auctionHasBids?: boolean;
+}
 
 
 const pokemonCardAbi =  [
@@ -1956,11 +1960,13 @@ function App() {
   const account = useAccount()
   const [newName, setNewName] = useState('')
   const [userPokemonIds, setUserPokemonIds] = useState<string[]>([])
-  const [ownedPokemonDetails, setOwnedPokemonDetails] = useState<DisplayPokemonData[]>([]);
+  const [rawOwnedPokemonDetails, setRawOwnedPokemonDetails] = useState<DisplayPokemonData[]>([]); // Stores base data without market status
+  // ownedPokemonDetails will be derived using useMemo later
   const [listTokenId, setListTokenId] = useState('');
   const [listPrice, setListPrice] = useState('');
   const [isTokenApproved, setIsTokenApproved] = useState(false);
   const [cancelListingStatus, setCancelListingStatus] = useState('');
+  const [isLoadingRawPokemonDetails, setIsLoadingRawPokemonDetails] = useState(false); // For fetching base details of owned Pokemon
 
   // Auction State
   interface AuctionItem {
@@ -2003,7 +2009,6 @@ function App() {
   const [isLoadingTokenIds, setIsLoadingTokenIds] = useState(false);
   const [fetchTokenIdsError, setFetchTokenIdsError] = useState<string | null>(null);
   const publicClient = usePublicClient();
-
   // To keep track of processed event logs for ItemSold
   const processedItemSoldLogIds = useRef(new Set<string>());
 
@@ -2035,6 +2040,11 @@ function App() {
 
   // UI State
   const [activeSection, setActiveSection] = useState<'myCards' | 'marketplace' | 'auctions' | 'admin'>('myCards');
+
+  // Withdrawal State
+  const [pendingWithdrawalAmount, setPendingWithdrawalAmount] = useState<bigint>(0n);
+  const [withdrawStatus, setWithdrawStatus] = useState('');
+  const [isUserMinter, setIsUserMinter] = useState(false);
   
   // Determine current network's contract addresses
   const currentNetworkConfig = account.chainId ? contractAddresses[account.chainId as keyof typeof contractAddresses] : null;
@@ -2066,6 +2076,33 @@ function App() {
   useEffect(() => {
     if (fetchedOwner) setContractOwner(fetchedOwner as `0x${string}`);
     setIsLoadingOwner(ownerLoadingStatus);
+  }, [fetchedOwner, ownerLoadingStatus]);
+
+  // Check if the current user is an authorized minter
+  const { data: minterStatusForUser, refetch: refetchMinterStatusForUser, isLoading: isLoadingMinterStatusForUser } = useReadContract({
+    abi: pokemonCardAbi,
+    address: POKEMON_CARD_ADDRESS,
+    functionName: '_minters', // The public getter for the mapping
+    args: [account.address!], // Pass the current user's address
+    query: {
+      enabled: !!account.address && !!POKEMON_CARD_ADDRESS,
+    }
+  });
+  useEffect(() => {
+    if (minterStatusForUser !== undefined) {
+      setIsUserMinter(minterStatusForUser as boolean);
+    }
+  }, [minterStatusForUser]);
+
+  // Read user's pending withdrawals from TradingPlatform
+  const { data: fetchedPendingWithdrawals, refetch: refetchPendingWithdrawals, isLoading: isLoadingPendingWithdrawals } = useReadContract({
+    abi: tradingPlatformAbi,
+    address: TRADING_PLATFORM_ADDRESS,
+    functionName: 'pendingWithdrawals',
+    args: [account.address!],
+    query: {
+      enabled: !!account.address && !!TRADING_PLATFORM_ADDRESS,
+    }
   });
   
   const MAX_POKEMON_ID = 100; // Define the maximum ID that can be minted
@@ -2078,6 +2115,13 @@ function App() {
     args: [account.address!], // Ensure account.address is defined
     enabled: !!account.address && !!POKEMON_CARD_ADDRESS, // Only run if address and contract address are available
   });
+
+  useEffect(() => {
+    if (fetchedPendingWithdrawals !== undefined) {
+      setPendingWithdrawalAmount(fetchedPendingWithdrawals as bigint);
+    }
+  }, [fetchedPendingWithdrawals]);
+
 
   // Helper function to get a specific stat from Pokemon JSON attributes
   function getStatFromJsonAttributes(attributes: Array<{ trait_type: string; value: string | number }>, trait: string, isNumeric = true): any {
@@ -2094,7 +2138,7 @@ function App() {
   async function fetchPokemonDisplayData(
     tokenId: string | bigint,
     currentPublicClient: typeof publicClient, // Use the specific type
-    pokemonCardAddr: `0x${string}`
+    pokemonCardAddr: `0x${string}`,
   ): Promise<DisplayPokemonData | null> {
     if (!currentPublicClient || !pokemonCardAddr) return null;
     try {
@@ -2137,26 +2181,28 @@ function App() {
   useEffect(() => {
     const fetchTokenIds = async () => {
       if (!publicClient) {
-        // console.warn("Public client not available for fetching token IDs yet.");
-        setUserPokemonIds([]);
-        setOwnedPokemonDetails([]);
+        // If publicClient is not ready, don't clear existing data, just return.
+        // Data will be fetched when publicClient becomes available.
         return;
       }
       if (pokemonBalance === undefined || !account.address || !POKEMON_CARD_ADDRESS ) {
-        setUserPokemonIds([]);
-        setOwnedPokemonDetails([]);
+        // If critical info is missing, clear data as it's likely invalid.
+        if (userPokemonIds.length > 0) setUserPokemonIds([]);
+        if (rawOwnedPokemonDetails.length > 0) setRawOwnedPokemonDetails([]);
         return;
       }
 
       const balanceNum = Number(pokemonBalance);
       if (balanceNum === 0) {
-        setUserPokemonIds([]);
-        setOwnedPokemonDetails([]);
+        // If balance is 0, clear data.
+        if (userPokemonIds.length > 0) setUserPokemonIds([]);
+        if (rawOwnedPokemonDetails.length > 0) setRawOwnedPokemonDetails([]);
         return;
       }
 
       setIsLoadingTokenIds(true);
       setFetchTokenIdsError(null);
+      setIsLoadingRawPokemonDetails(true); // Indicate raw details are being fetched/updated
       const ids: string[] = [];
       
       try { // Main try block for all fetching operations
@@ -2184,19 +2230,10 @@ function App() {
             fetchPokemonDisplayData(id, publicClient, POKEMON_CARD_ADDRESS!)
           );
           const resolvedDetails = (await Promise.all(detailsPromises)).filter(d => d !== null) as DisplayPokemonData[];
-          setOwnedPokemonDetails(resolvedDetails);
-  
-          if (resolvedDetails.length > 0) {
-            if (!listTokenId || !resolvedDetails.some(p => p.tokenId === listTokenId)) {
-              setListTokenId(resolvedDetails[0].tokenId);
-            }
-          } else {
-            setListTokenId(''); // No details resolved, clear selection
-          }
+          setRawOwnedPokemonDetails(resolvedDetails);
         } else {
           // If ids array is empty (either from 0 balance or if the loop above didn't populate it)
-          setOwnedPokemonDetails([]);
-          setListTokenId('');
+          setRawOwnedPokemonDetails([]);
         }
 
       } catch (e: any) { // Main catch block for any error in the try block
@@ -2204,16 +2241,42 @@ function App() {
         setFetchTokenIdsError(`Failed to fetch Pokémon data: ${e.message || 'Unknown error'}`);
         // Ensure states are reset on error
         setUserPokemonIds([]); // Clear IDs if any part of the try failed
-        setOwnedPokemonDetails([]);
-        setListTokenId(''); // Also clear listTokenId if there are no details to show
+        setRawOwnedPokemonDetails([]);
       }
     finally { // Main finally block, attached to the main try-catch
         setIsLoadingTokenIds(false);
+        setIsLoadingRawPokemonDetails(false);
       }
     };
 
     fetchTokenIds();
-  }, [pokemonBalance, account.address, POKEMON_CARD_ADDRESS, account.status, publicClient, refetchBalance]); // Added refetchBalance as it signals a change
+  }, [pokemonBalance, account.address, POKEMON_CARD_ADDRESS, account.status, publicClient]); // Removed marketplaceListings, activeAuctions, refetchBalance
+
+  // Derive ownedPokemonDetails with status using useMemo
+  const ownedPokemonDetails = useMemo(() => {
+    return rawOwnedPokemonDetails.map(pokemon => {
+      const listedItem = marketplaceListings.find(l => l.tokenId === pokemon.tokenId && l.seller === account.address);
+      const auctionedItem = activeAuctions.find(a => a.tokenId === pokemon.tokenId && a.seller === account.address);
+      
+      return {
+        ...pokemon,
+        isListed: !!listedItem,
+        listingId: listedItem?.listingId,
+        isInAuction: !!auctionedItem,
+        auctionId: auctionedItem?.auctionId,
+        auctionHasBids: auctionedItem?.highestBidder !== '0x0000000000000000000000000000000000000000',
+      };
+    });
+  }, [rawOwnedPokemonDetails, marketplaceListings, activeAuctions, account.address]);
+
+  // Effect to update listTokenId when ownedPokemonDetails change
+  useEffect(() => {
+    if (ownedPokemonDetails.length > 0 && (!listTokenId || !ownedPokemonDetails.some(p => p.tokenId === listTokenId))) {
+      setListTokenId(ownedPokemonDetails[0].tokenId);
+    } else if (ownedPokemonDetails.length === 0 && listTokenId) {
+      setListTokenId('');
+    }
+  }, [ownedPokemonDetails, listTokenId]); // listTokenId is included to prevent potential loops if setListTokenId itself triggers a change that would re-evaluate this.
 
   // Check if the selected token is approved for the marketplace
   const { data: approvedAddress, refetch: refetchApprovalStatus, isLoading: isLoadingApprovalStatus } = useReadContract({
@@ -2540,6 +2603,25 @@ function App() {
     setBidInputs(prev => ({ ...prev, [auctionId]: value }));
   };
 
+  const handleWithdrawFunds = async () => {
+    if (!TRADING_PLATFORM_ADDRESS || !account.address || pendingWithdrawalAmount === 0n) {
+      alert("No funds to withdraw or trading platform not available.");
+      return;
+    }
+    setCurrentActionInfo({ type: 'withdraw', details: `Amount: ${formatEther(pendingWithdrawalAmount)} ETH` });
+    try {
+      await writeContractAsync({
+        abi: tradingPlatformAbi,
+        address: TRADING_PLATFORM_ADDRESS,
+        functionName: 'withdraw',
+        args: [], // withdraw function takes no arguments
+      });
+      setWithdrawStatus(`Withdrawing funds: Transaction submitted...`);
+    } catch (e: any) {
+      setWithdrawStatus(`Withdrawal failed: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null });
+    }
+  };
 
 
 
@@ -2633,14 +2715,13 @@ function App() {
           console.log(`[Event Watcher] ${eventName} event:`, log.args);
           setRefreshAuctionsTrigger(prev => prev + 1); // Refresh auction list
           if (eventName === 'AuctionEnded' || eventName === 'AuctionCancelled') {
-            refetchBalance(); // Token ownership might change or token becomes available again
+            refetchBalance(); // Token ownership might change
+            if (refetchPendingWithdrawals) refetchPendingWithdrawals(); // Seller might have funds
           }
         });
       }
     });
   });
-
-
 
     // Watch for MinterSetTrue and MinterSetFalse events to update minter list
     useWatchContractEvent({
@@ -2675,7 +2756,7 @@ function App() {
   useEffect(() => {
     const fetchListings = async () => {
       if (!publicClient || !TRADING_PLATFORM_ADDRESS || !POKEMON_CARD_ADDRESS) {
-        setMarketplaceListings([]);
+        // Don't clear listings here if it's just a configuration issue temporarily
         return;
       }
       setIsLoadingMarketplace(true);
@@ -2688,8 +2769,8 @@ function App() {
         });
 
         if (!itemListedLogs || itemListedLogs.length === 0) {
-          setMarketplaceListings([]);
-          setIsLoadingMarketplace(false);
+          setMarketplaceListings([]); // Clear if no logs found, meaning no items ever listed or all are gone
+          setIsLoadingMarketplace(false); // Ensure loading is set to false
           return;
         }
 
@@ -2739,7 +2820,7 @@ function App() {
           }));
 
         if (activeListingsData.length === 0) {
-          setMarketplaceListings([]);
+          setMarketplaceListings([]); // Clear if no active listings remain
           setIsLoadingMarketplace(false);
           return;
         }
@@ -2767,7 +2848,7 @@ function App() {
         setMarketplaceListings(finalMarketplaceListings);
       } catch (error: any) {
         setMarketplaceError(`Failed to load marketplace: ${error.message}`);
-        setMarketplaceListings([]);
+        // Potentially keep stale data on error instead of clearing, or show error prominently
       } finally {
         setIsLoadingMarketplace(false);
       }
@@ -2791,7 +2872,7 @@ function App() {
   useEffect(() => {
     const fetchAuctions = async () => {
       if (!publicClient || !TRADING_PLATFORM_ADDRESS || !POKEMON_CARD_ADDRESS) {
-        setActiveAuctions([]);
+        // Don't clear auctions here if it's just a configuration issue temporarily
         return;
       }
       setIsLoadingAuctions(true);
@@ -2804,8 +2885,8 @@ function App() {
         });
 
         if (!auctionCreatedLogs || auctionCreatedLogs.length === 0) {
-          setActiveAuctions([]);
-          setIsLoadingAuctions(false);
+          setActiveAuctions([]); // Clear if no auctions ever created or all are gone
+          setIsLoadingAuctions(false); // Ensure loading is set to false
           return;
         }
 
@@ -2859,7 +2940,7 @@ function App() {
         setActiveAuctions(resolvedAuctions);
       } catch (error: any) {
         setAuctionsError(`Failed to load auctions: ${error.message}`);
-        setActiveAuctions([]);
+        // Potentially keep stale data on error
       } finally {
         setIsLoadingAuctions(false);
       }
@@ -2982,6 +3063,12 @@ function App() {
         setSetMinterStatus(successMessage);
         setRefreshMintersTrigger(prev => prev + 1); // Refresh the list of minters
         setMinterAddressInput(''); // Clear input on success
+      } else if (actionType === 'withdraw') {
+        successMessage = `✅ Funds withdrawn successfully! (${actionDetails})`;
+        setWithdrawStatus(successMessage);
+        if (refetchPendingWithdrawals) refetchPendingWithdrawals();
+        if (refetchMinterStatusForUser) refetchMinterStatusForUser(); // In case owner status changed something relevant
+        refetchBalance(); // User's ETH balance will change
       }
       setCurrentActionInfo({ type: null }); // Reset action info
       if (resetWriteContract) resetWriteContract(); // Reset wagmi write hook state for all confirmed TXs
@@ -2999,6 +3086,7 @@ function App() {
         if (cancelAuctionStatus.includes('✅')) setCancelAuctionStatus('');
         if (setMinterStatus.includes('✅')) setSetMinterStatus('');
         if (endAuctionStatus.includes('✅')) setEndAuctionStatus('');
+        if (withdrawStatus.includes('✅')) setWithdrawStatus('');
       }, 4000);
       return () => clearTimeout(timer);
 
@@ -3044,7 +3132,10 @@ function App() {
         userFacingError = `⚠️ Failed ${verb} minter (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
         setSetMinterStatus(userFacingError);
         setMinterAddressInput(''); // Clear input on transaction confirmation error
-   
+      } else if (actionType === 'withdraw') {
+        userFacingError = `⚠️ Withdrawal failed (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
+        setWithdrawStatus(userFacingError);
+        // Don't clear pending amount here, as the withdrawal failed. It might still be there.
       }
       setCurrentActionInfo({ type: null }); // Reset action info
       }
@@ -3063,19 +3154,20 @@ function App() {
         if (cancelAuctionStatus.includes('⚠️')) setCancelAuctionStatus('');
         if (endAuctionStatus.includes('⚠️')) setEndAuctionStatus('');
         if (setMinterStatus.includes('⚠️')) setSetMinterStatus('');
+        if (withdrawStatus.includes('⚠️')) setWithdrawStatus('');
  
       }, 7000);
       return () => clearTimeout(errorTimer);
     }
   }, [
     isConfirmed, receipt, confirmationError, currentActionInfo,
-    refetchBalance, refetchApprovalStatus, refetchNextTokenId, resetWriteContract, // Changed refetchTotalSupply to refetchNextTokenId
+    refetchBalance, refetchApprovalStatus, refetchNextTokenId, resetWriteContract, refetchPendingWithdrawals, refetchMinterStatusForUser,
     listTokenId, setListTokenId,
     setRefreshMarketplaceTrigger, setRefreshAuctionsTrigger, setRefreshMintersTrigger,
-    setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, 
-    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, setSetMinterStatus, // Include setters
+    setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, setWithdrawStatus,
+    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, setSetMinterStatus,
     mintStatus, approveStatus, listStatus, buyStatus, burnStatus,
-    cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus, setMinterStatus // Include status strings
+    cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus, setMinterStatus, withdrawStatus
   ]);  
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}> {/* Centered content */}
@@ -3132,38 +3224,79 @@ function App() {
             {/* Conditionally Rendered Sections */}
             {activeSection === 'myCards' && (
               <div className="section-container" style={{marginTop: '20px'}}>
-              <MintCardForm
-                onMint={handleMint}
-                mintStatus={mintStatus}
-                isMintingInProgress={(isWritePending || isConfirming) && currentActionInfo.type === 'mint'}
-                mintingError={writeError && currentActionInfo.type === 'mint' ? writeError : null}
-                expectedNextPokemonId={nextTokenIdData !== undefined ? BigInt(nextTokenIdData as number | bigint) : undefined}
-                maxPokemonIdReached={nextTokenIdData !== undefined ? (BigInt(nextTokenIdData as number | bigint) > BigInt(MAX_POKEMON_ID)) : false}
-                isLoadingNextId={isLoadingNextTokenId}
-              />
+              {(isUserMinter || (contractOwner && account.address?.toLowerCase() === contractOwner.toLowerCase())) && (
+                <>
+                  <MintCardForm
+                    onMint={handleMint}
+                    mintStatus={mintStatus}
+                    isMintingInProgress={(isWritePending || isConfirming) && currentActionInfo.type === 'mint'}
+                    mintingError={writeError && currentActionInfo.type === 'mint' ? writeError : null}
+                    expectedNextPokemonId={nextTokenIdData !== undefined ? BigInt(nextTokenIdData as number | bigint) : undefined}
+                    maxPokemonIdReached={nextTokenIdData !== undefined ? (BigInt(nextTokenIdData as number | bigint) > BigInt(MAX_POKEMON_ID)) : false}
+                    isLoadingNextId={isLoadingNextTokenId}
+                  />
+                  <hr/>
+                </>
+              )}
+              
+              {TRADING_PLATFORM_ADDRESS && (
+                <div style={{padding: '10px', border: '1px dashed #777', borderRadius: '8px', marginBottom: '20px'}}>
+                  <h4>Your Funds on Platform</h4>
+                  {isLoadingPendingWithdrawals && <p>Loading your withdrawable balance...</p>}
+                  {!isLoadingPendingWithdrawals && (
+                    <p>Withdrawable: {formatEther(pendingWithdrawalAmount)} ETH</p>
+                  )}
+                  <button onClick={handleWithdrawFunds} disabled={pendingWithdrawalAmount === 0n || ((isWritePending || isConfirming) && currentActionInfo.type === 'withdraw')}>
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'withdraw') ? 'Withdrawing...' : 'Withdraw Funds'}
+                  </button>
+                  {withdrawStatus && <p><small>{withdrawStatus}</small></p>}
+                </div>
+              )}
               <hr/>
               <h3>Your Pokémon Cards</h3>
-              {(isLoadingBalance && !pokemonBalance) && <p>Loading your balance...</p>}
-              {isLoadingTokenIds && <p>Fetching your token IDs...</p>}
+              {/* More nuanced loading states */}
+              {(isLoadingBalance && !pokemonBalance) && <p>Loading your card balance...</p>}
+              {!isLoadingBalance && pokemonBalance !== undefined && isLoadingTokenIds && <p>Fetching your token IDs...</p>}
+              {!isLoadingBalance && pokemonBalance !== undefined && !isLoadingTokenIds && userPokemonIds.length > 0 && isLoadingRawPokemonDetails && <p>Fetching details for your Pokémon...</p>}
+              
+
+
               {fetchTokenIdsError && <p style={{ color: 'red' }}>{fetchTokenIdsError}</p>}
-              {!isLoadingTokenIds && !fetchTokenIdsError && ownedPokemonDetails.length > 0 ? (
+              {!isLoadingTokenIds && !isLoadingRawPokemonDetails && !fetchTokenIdsError && ownedPokemonDetails.length > 0 ? (
                 <>
                   <p>Your Card Balance: {pokemonBalance?.toString()}</p>
                   <div className="flex-wrap-container">
                     {ownedPokemonDetails.map(pokemon => ( // Ensure key is unique
                       <div key={pokemon.tokenId} className="card" style={{ width: '220px' }}>
-                        {pokemon.imageUrl && <img src={pokemon.imageUrl} alt={pokemon.name} style={{ maxWidth: '100%', height: 'auto', marginBottom: '5px' }} />}
+                        {pokemon.imageUrl && <img src={pokemon.imageUrl} alt={pokemon.name || `Token ${pokemon.tokenId}`} style={{ maxWidth: '100%', height: 'auto', marginBottom: '5px' }} />}
                         <strong>{pokemon.name} (ID: {pokemon.tokenId})</strong>
                         <p style={{fontSize: '0.8em', margin: '2px 0'}}>HP: {pokemon.hp}, Atk: {pokemon.attack}, Def: {pokemon.defense}</p>
                         <p style={{fontSize: '0.8em', margin: '2px 0'}}>Speed: {pokemon.speed}, Special: {pokemon.special}</p>
                         <p style={{fontSize: '0.8em', margin: '2px 0'}}>Types: {pokemon.type1}{pokemon.type2 ? ` / ${pokemon.type2}` : ''}</p>
-                        <button
-                          onClick={() => handleBurn(pokemon.tokenId)}
-                          disabled={(isWritePending || isConfirming) && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId}
-                          style={{ marginTop: '5px', width: '100%' }}
-                        >
-                          { (isWritePending && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? 'Sending...' : (isConfirming && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? 'Confirming Burn...' : `Burn Token ${pokemon.tokenId}` }
-                        </button>
+                        {pokemon.isListed && pokemon.listingId && (
+                          <>
+                            <p style={{color: 'orange', fontSize: '0.9em', fontWeight: 'bold'}}>Status: Listed (ID: {pokemon.listingId})</p>
+                            <button onClick={() => handleCancelListing(pokemon.listingId!)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(pokemon.listingId!))}>
+                              {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(pokemon.listingId!)) ? 'Cancelling...' : 'Cancel Listing'}
+                            </button>
+                          </>
+                        )}
+                        {pokemon.isInAuction && pokemon.auctionId && (
+                          <>
+                            <p style={{color: 'cyan', fontSize: '0.9em', fontWeight: 'bold'}}>Status: In Auction (ID: {pokemon.auctionId})</p>
+                            {!pokemon.auctionHasBids && (
+                              <button onClick={() => handleCancelAuction(pokemon.auctionId!)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(pokemon.auctionId!))}>
+                                {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(pokemon.auctionId!)) ? 'Cancelling...' : 'Cancel Auction'}
+                              </button>
+                            )}
+                            {pokemon.auctionHasBids && <p style={{fontSize: '0.8em', color: '#aaa'}}>Cannot cancel, auction has bids.</p>}
+                          </>
+                        )}
+                        {!pokemon.isListed && !pokemon.isInAuction && (
+                          <button onClick={() => handleBurn(pokemon.tokenId)} disabled={(isWritePending || isConfirming) && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId} style={{ marginTop: '5px', width: '100%' }}>
+                            { (isWritePending && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? 'Sending...' : (isConfirming && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? 'Confirming Burn...' : `Burn Token ${pokemon.tokenId}` }
+                          </button>
+                        )}
                       </div>
                     ))}
                     {burnStatus && <p><small>{burnStatus}</small></p>}
@@ -3230,8 +3363,8 @@ function App() {
                   {listStatus && (listStatus.includes('listed') || listStatus.includes('failed')) &&  <p><small>{listStatus}</small></p>}
                   {createAuctionStatus && <p><small>{createAuctionStatus}</small></p>}
                 </>
-              ) : (
-                !isLoadingTokenIds && !fetchTokenIdsError && <p>You don't own any Pokémon NFTs yet. Try minting one!</p>
+              ) : ( // Conditions for "no cards" message
+                !isLoadingBalance && pokemonBalance !== undefined && Number(pokemonBalance) === 0 && !isLoadingTokenIds && !isLoadingRawPokemonDetails && !fetchTokenIdsError && <p>You don't own any Pokémon NFTs yet. Try minting one!</p>
               )}
             </div>
             )}
@@ -3245,10 +3378,10 @@ function App() {
 
               {/* Display loading or error messages */}
               {/* The "Refreshing..." message will show above the list if it's a refresh */}
-              {isLoadingMarketplace && marketplaceListings.length > 0 && <p>Refreshing marketplace data...</p>}
+              {isLoadingMarketplace && marketplaceListings.length > 0 && <p><small>Refreshing marketplace data...</small></p>}
               {/* The "Loading..." message will show if it's an initial load (no items yet) */}
               {isLoadingMarketplace && marketplaceListings.length === 0 && <p>Loading marketplace...</p>}
-              {marketplaceError && <p style={{ color: 'red' }}>{marketplaceError}</p>}
+              {marketplaceError && !isLoadingMarketplace && <p style={{ color: 'red' }}>{marketplaceError}</p>}
 
               {/* Display "No items" message only if not loading, no error, and list is truly empty */}
               {!isLoadingMarketplace && !marketplaceError && marketplaceListings.length === 0 &&  (
@@ -3296,8 +3429,9 @@ function App() {
               <button onClick={() => setRefreshAuctionsTrigger(prev => prev + 1)} disabled={isLoadingAuctions}>
                 {isLoadingAuctions ? 'Refreshing Auctions...' : 'Refresh Auctions'}
               </button>
+              {isLoadingAuctions && activeAuctions.length > 0 && <p><small>Refreshing auction data...</small></p>}
               {isLoadingAuctions && activeAuctions.length === 0 && <p>Loading auctions...</p>}
-              {auctionsError && <p style={{ color: 'red' }}>{auctionsError}</p>}
+              {auctionsError && !isLoadingAuctions && <p style={{ color: 'red' }}>{auctionsError}</p>}
               {!isLoadingAuctions && !auctionsError && activeAuctions.length === 0 && <p>No active auctions at the moment.</p>}
 
               {activeAuctions.length > 0 && (
