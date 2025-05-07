@@ -2023,6 +2023,16 @@ function App() {
   const [endAuctionStatus, setEndAuctionStatus] = useState('');
   const [refreshMarketplaceTrigger, setRefreshMarketplaceTrigger] = useState(0);
 
+    // Admin Panel State (for PokemonCard contract owner)
+    const [contractOwner, setContractOwner] = useState<`0x${string}` | null>(null);
+    const [isLoadingOwner, setIsLoadingOwner] = useState(false);
+    const [minterAddressInput, setMinterAddressInput] = useState('');
+    const [currentMinters, setCurrentMinters] = useState<`0x${string}`[]>([]);
+    const [isLoadingMinters, setIsLoadingMinters] = useState(false);
+    const [mintersError, setMintersError] = useState<string | null>(null);
+    const [setMinterStatus, setSetMinterStatus] = useState('');
+    const [refreshMintersTrigger, setRefreshMintersTrigger] = useState(0);
+  
   // Determine current network's contract addresses
   const currentNetworkConfig = account.chainId ? contractAddresses[account.chainId as keyof typeof contractAddresses] : null;
   const POKEMON_CARD_ADDRESS = currentNetworkConfig?.pokemonCardAddress;
@@ -2043,6 +2053,18 @@ function App() {
       enabled: !!POKEMON_CARD_ADDRESS,
     }
   });
+  // Read PokemonCard contract owner
+  const { data: fetchedOwner, isLoading: ownerLoadingStatus, refetch: refetchOwner } = useReadContract({
+    abi: pokemonCardAbi,
+    address: POKEMON_CARD_ADDRESS,
+    functionName: 'owner',
+    query: { enabled: !!POKEMON_CARD_ADDRESS },
+  });
+  useEffect(() => {
+    if (fetchedOwner) setContractOwner(fetchedOwner as `0x${string}`);
+    setIsLoadingOwner(ownerLoadingStatus);
+  });
+  
   const MAX_POKEMON_ID = 100; // Define the maximum ID that can be minted
 
   // Read user's Pokemon balance
@@ -2209,7 +2231,37 @@ function App() {
     }
   }, [approvedAddress, TRADING_PLATFORM_ADDRESS]);
 
+  const handleSetMinter = async (addressToSet: string, makeMinter: boolean) => {
+    if (!POKEMON_CARD_ADDRESS || !account.address || !contractOwner || account.address.toLowerCase() !== contractOwner.toLowerCase()) {
+      alert("This action can only be performed by the contract owner.");
+      return;
+    }
+    if (!addressToSet || !/^0x[a-fA-F0-9]{40}$/.test(addressToSet)) {
+      alert("Please enter a valid Ethereum address for the minter.");
+      setSetMinterStatus("Invalid address provided.");
+      return;
+    }
 
+    const functionName = makeMinter ? 'setMinterTrue' : 'setMinterFalse';
+    const actionVerb = makeMinter ? 'Adding' : 'Removing';
+    setCurrentActionInfo({ type: functionName, details: `Address: ${addressToSet}` });
+
+    try {
+      await writeContractAsync({
+        abi: pokemonCardAbi,
+        address: POKEMON_CARD_ADDRESS,
+        functionName: functionName,
+        args: [addressToSet as `0x${string}`],
+      });
+      setSetMinterStatus(`${actionVerb} minter ${addressToSet.substring(0,6)}...: Transaction submitted...`);
+    } catch (e: any) {
+      setSetMinterStatus(`Failed to ${actionVerb.toLowerCase()} minter: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null }); // Reset on direct failure
+      setMinterAddressInput(''); // Clear input on direct failure
+    }
+  };
+
+  
   // --- Transaction Functions ---
   const handleMint = async () => {
     if (!POKEMON_CARD_ADDRESS || !account.address || !publicClient) {
@@ -2585,6 +2637,37 @@ function App() {
     });
   });
 
+
+
+    // Watch for MinterSetTrue and MinterSetFalse events to update minter list
+    useWatchContractEvent({
+      address: POKEMON_CARD_ADDRESS,
+      abi: pokemonCardAbi,
+      eventName: 'MinterSetTrue',
+      enabled: !!POKEMON_CARD_ADDRESS,
+      onLogs(logs) {
+        logs.forEach(log => {
+          const args = log.args as { minter?: `0x${string}` };
+          console.log(`[Event Watcher] MinterSetTrue for ${args.minter}`);
+          setRefreshMintersTrigger(prev => prev + 1); // Refresh minters list
+        });
+      }
+    });
+  
+    useWatchContractEvent({
+      address: POKEMON_CARD_ADDRESS,
+      abi: pokemonCardAbi,
+      eventName: 'MinterSetFalse',
+      enabled: !!POKEMON_CARD_ADDRESS,
+      onLogs(logs) {
+        logs.forEach(log => {
+          const args = log.args as { minter?: `0x${string}` };
+          console.log(`[Event Watcher] MinterSetFalse for ${args.minter}`);
+          setRefreshMintersTrigger(prev => prev + 1); // Refresh minters list
+        });
+      }
+    });
+  
   // Effect to fetch marketplace listings
   useEffect(() => {
     const fetchListings = async () => {
@@ -2781,6 +2864,54 @@ function App() {
     fetchAuctions();
   }, [account.status, TRADING_PLATFORM_ADDRESS, POKEMON_CARD_ADDRESS, publicClient, refreshAuctionsTrigger]);
 
+
+  // Effect to fetch current minters for the Admin Panel
+  useEffect(() => {
+    const fetchCurrentMinters = async () => {
+      if (!publicClient || !POKEMON_CARD_ADDRESS) {
+        setCurrentMinters([]);
+        return;
+      }
+      setIsLoadingMinters(true);
+      setMintersError(null);
+      try {
+        // Fetch all MinterSetTrue events
+        const trueLogs = await publicClient.getLogs({
+          address: POKEMON_CARD_ADDRESS,
+          event: parseAbiItem('event MinterSetTrue(address minter)'),
+          fromBlock: 0n, // Fetch all logs from the beginning
+        });
+        // Fetch all MinterSetFalse events
+        const falseLogs = await publicClient.getLogs({
+          address: POKEMON_CARD_ADDRESS,
+          event: parseAbiItem('event MinterSetFalse(address minter)'),
+          fromBlock: 0n,
+        });
+
+        const minterStatusMap = new Map<`0x${string}`, boolean>();
+        // Process true logs, then false logs to ensure the latest status is recorded
+        trueLogs.forEach(log => {
+          const args = log.args as { minter?: `0x${string}` };
+          if (args.minter) minterStatusMap.set(args.minter, true);
+        });
+        falseLogs.forEach(log => {
+          const args = log.args as { minter?: `0x${string}` };
+          if (args.minter) minterStatusMap.set(args.minter, false);
+        });
+
+        const activeMinters = Array.from(minterStatusMap.entries()).filter(([, isMinter]) => isMinter).map(([address]) => address);
+        setCurrentMinters(activeMinters);
+      } catch (error: any) {
+        setMintersError(`Failed to load minters: ${error.message}`);
+        setCurrentMinters([]);
+      } finally {
+        setIsLoadingMinters(false);
+      }
+    };
+    fetchCurrentMinters();
+  }, [POKEMON_CARD_ADDRESS, publicClient, refreshMintersTrigger]); // Depends on contract address, client, and manual trigger
+
+
   // Effect to handle transaction confirmation feedback and refetch data
   useEffect(() => {
     // Define these here to be available for both success and error paths if currentActionInfo.type is true
@@ -2842,6 +2973,12 @@ function App() {
         setEndAuctionStatus(successMessage);
         setRefreshAuctionsTrigger(prev => prev + 1);
         refetchBalance(); // Ownership might change, or funds become withdrawable
+      } else if (actionType === 'setMinterTrue' || actionType === 'setMinterFalse') {
+        const verb = actionType === 'setMinterTrue' ? 'added' : 'removed';
+        successMessage = `✅ Minter ${verb} successfully! (${actionDetails})`;
+        setSetMinterStatus(successMessage);
+        setRefreshMintersTrigger(prev => prev + 1); // Refresh the list of minters
+        setMinterAddressInput(''); // Clear input on success
       }
       setCurrentActionInfo({ type: null }); // Reset action info
       if (resetWriteContract) resetWriteContract(); // Reset wagmi write hook state for all confirmed TXs
@@ -2857,6 +2994,7 @@ function App() {
         if (createAuctionStatus.includes('✅')) setCreateAuctionStatus('');
         if (bidStatus.includes('✅')) setBidStatus('');
         if (cancelAuctionStatus.includes('✅')) setCancelAuctionStatus('');
+        if (setMinterStatus.includes('✅')) setSetMinterStatus('');
         if (endAuctionStatus.includes('✅')) setEndAuctionStatus('');
       }, 4000);
       return () => clearTimeout(timer);
@@ -2898,6 +3036,12 @@ function App() {
       } else if (actionType === 'endAuction' && actionDetails) {
         userFacingError = `⚠️ Ending auction failed (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
         setEndAuctionStatus(userFacingError);
+      } else if (actionType === 'setMinterTrue' || actionType === 'setMinterFalse') {
+        const verb = actionType === 'setMinterTrue' ? 'adding' : 'removing';
+        userFacingError = `⚠️ Failed ${verb} minter (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
+        setSetMinterStatus(userFacingError);
+        setMinterAddressInput(''); // Clear input on transaction confirmation error
+   
       }
       setCurrentActionInfo({ type: null }); // Reset action info
       }
@@ -2915,29 +3059,30 @@ function App() {
         if (bidStatus.includes('⚠️')) setBidStatus('');
         if (cancelAuctionStatus.includes('⚠️')) setCancelAuctionStatus('');
         if (endAuctionStatus.includes('⚠️')) setEndAuctionStatus('');
+        if (setMinterStatus.includes('⚠️')) setSetMinterStatus('');
+ 
       }, 7000);
       return () => clearTimeout(errorTimer);
     }
   }, [
     isConfirmed, receipt, confirmationError, currentActionInfo,
     refetchBalance, refetchApprovalStatus, refetchNextTokenId, resetWriteContract, // Changed refetchTotalSupply to refetchNextTokenId
-    listTokenId, setListTokenId, 
-    setRefreshMarketplaceTrigger, setRefreshAuctionsTrigger,
+    listTokenId, setListTokenId,
+    setRefreshMarketplaceTrigger, setRefreshAuctionsTrigger, setRefreshMintersTrigger,
     setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, 
-    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, // Include setters
+    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, setSetMinterStatus, // Include setters
     mintStatus, approveStatus, listStatus, buyStatus, burnStatus,
-    cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus // Include status strings
+    cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus, setMinterStatus // Include status strings
   ]);  
   return (
     <>
-      <div>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}> {/* Centered content */}
         <AccountConnect />
-      </div>
 
-      {account.status === 'connected' && currentNetworkConfig && (
-        <>
-          <hr style={{ margin: '20px 0' }} />
-          <div>
+        {account.status === 'connected' && currentNetworkConfig && (
+          <>
+            <hr />
+            <div className="section-container">
             <h2>Pokémon Card dApp ({currentNetworkConfig.name})</h2>
             <p>Pokemon Contract: {POKEMON_CARD_ADDRESS}</p>
             <p>Trading Platform: {TRADING_PLATFORM_ADDRESS}</p>
@@ -2954,17 +3099,17 @@ function App() {
             />
 
             {/* Owned NFTs and Listing */}
-            <div style={{ margin: '10px 0', padding: '10px', border: '1px solid #eee' }}>
+              <div className="section-container" style={{marginTop: '20px'}}>
               <h3>Your Pokémon Cards</h3>
               {(isLoadingBalance && !pokemonBalance) && <p>Loading your balance...</p>}
               {isLoadingTokenIds && <p>Fetching your token IDs...</p>}
               {fetchTokenIdsError && <p style={{ color: 'red' }}>{fetchTokenIdsError}</p>}
               {!isLoadingTokenIds && !fetchTokenIdsError && ownedPokemonDetails.length > 0 ? (
                 <>
-                  <p>Balance: {pokemonBalance?.toString()}</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+                  <p>Your Card Balance: {pokemonBalance?.toString()}</p>
+                  <div className="flex-wrap-container">
                     {ownedPokemonDetails.map(pokemon => (
-                      <div key={pokemon.tokenId} style={{ border: '1px solid #ddd', padding: '10px', width: '200px' }}>
+                      <div key={pokemon.tokenId} className="card" style={{ width: '220px' }}>
                         {pokemon.imageUrl && <img src={pokemon.imageUrl} alt={pokemon.name} style={{ maxWidth: '100%', height: 'auto', marginBottom: '5px' }} />}
                         <strong>{pokemon.name} (ID: {pokemon.tokenId})</strong>
                         <p style={{fontSize: '0.8em', margin: '2px 0'}}>HP: {pokemon.hp}, Atk: {pokemon.attack}, Def: {pokemon.defense}</p>
@@ -2983,56 +3128,59 @@ function App() {
                   </div>
 
                   {/* Combined Listing and Auction Creation Form */}
-                  <h4 style={{marginTop: '15px'}}>Manage Your Card (ID: {listTokenId || 'Select a card'})</h4>
-                  <p><small>Select a card from your collection above to manage (list for sale, create auction, etc.). The approval step is for the Trading Platform contract to manage your selected token.</small></p>
-                  
-                  <label htmlFor="token-select">Token ID: </label>
-                  <select id="token-select" value={listTokenId} onChange={(e) => setListTokenId(e.target.value)}>
-                    {ownedPokemonDetails.map(p => <option key={p.tokenId} value={p.tokenId}>{p.name} (ID: {p.tokenId})</option>)}
-                  </select>
-                  <br />
-                  <label htmlFor="price-input">Price (ETH): </label>
-                  <input id="price-input" type="text" value={listPrice} onChange={(e) => setListPrice(e.target.value)} placeholder="e.g., 0.1" />
-                  
-                  <button
-                    onClick={handleApprove}
-                    disabled={!listTokenId || isTokenApproved || isLoadingApprovalStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'approve')}
-                  >
-                    {isLoadingApprovalStatus ? 'Checking Approval...' :
-                     isTokenApproved ? '✅ Approved' :
-                     ((isWritePending || isConfirming) && currentActionInfo.type === 'approve') ? (isConfirming ? 'Approving (Confirming...)' : 'Sending to Wallet...') :
-                     (approveStatus && !approveStatus.includes('approved') && !approveStatus.includes('failed')) ? approveStatus : '1. Approve Marketplace'}
-                  </button>
-                  <button
-                    onClick={handleListCard}
-                    disabled={!listTokenId || !listPrice || !isTokenApproved || ((isWritePending || isConfirming) && currentActionInfo.type === 'list')}
-                  >
-                    {((isWritePending || isConfirming) && currentActionInfo.type === 'list') ? (isConfirming ? 'Listing (Confirming...)' : 'Sending to Wallet...') :
-                     (listStatus && !listStatus.includes('listed') && !listStatus.includes('failed')) ? listStatus : '2. List Card'}
-                  </button>
-                  <br/>
-                  {/* Create Auction Inputs - reusing the selected listTokenId for approval simplicity */}
-                  <label htmlFor="auction-start-price">Auction Start Price (ETH): </label>
-                  <input id="auction-start-price" type="text" value={createAuctionStartingPrice} onChange={(e) => setCreateAuctionStartingPrice(e.target.value)} placeholder="e.g., 0.05" />
-                  
-                  <label htmlFor="auction-duration">Duration (minutes): </label>
-                  <input id="auction-duration" type="number" value={createAuctionDurationMinutes} onChange={(e) => setCreateAuctionDurationMinutes(e.target.value)} placeholder="e.g., 60" />
-                  
-                  <button
-                    onClick={() => {
-                      // Ensure the token selected for auction is the one that's been approved.
-                      // This simple check assumes `listTokenId` is the one intended for auction.
-                      if (listTokenId) {
-                        setCreateAuctionTokenId(listTokenId); // Set the token for auction
-                        handleCreateAuction();
-                      } else {
-                        alert("Please select a token ID from the dropdown first.");
-                      }
-                    }}
-                    disabled={!listTokenId || !createAuctionStartingPrice || !createAuctionDurationMinutes || !isTokenApproved || ((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction')}
-                  >
-                    {((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction') ? (isConfirming ? 'Creating Auction (Confirming...)' : 'Sending...') : '3. Create Auction'}
-                  </button>
+                  <div style={{marginTop: '25px', padding: '15px', border: '1px dashed #555', borderRadius: '8px'}}>
+                    <h4>Manage Your Card (ID: {listTokenId || 'Select a card'})</h4>
+                    <p><small>Select a card from your collection above to manage. The approval step is for the Trading Platform contract to manage your selected token.</small></p>
+                    
+                    <div style={{marginBottom: '10px'}}>
+                      <label htmlFor="token-select" style={{marginRight: '5px'}}>Token ID: </label>
+                      <select id="token-select" value={listTokenId} onChange={(e) => setListTokenId(e.target.value)}>
+                        {ownedPokemonDetails.map(p => <option key={p.tokenId} value={p.tokenId}>{p.name} (ID: {p.tokenId})</option>)}
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={handleApprove}
+                      disabled={!listTokenId || isTokenApproved || isLoadingApprovalStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'approve')}
+                    >
+                      {isLoadingApprovalStatus ? 'Checking Approval...' :
+                       isTokenApproved ? '✅ Approved for Marketplace' :
+                       ((isWritePending || isConfirming) && currentActionInfo.type === 'approve') ? (isConfirming ? 'Approving (Confirming...)' : 'Sending to Wallet...') :
+                       (approveStatus && !approveStatus.includes('approved') && !approveStatus.includes('failed')) ? approveStatus : '1. Approve Marketplace'}
+                    </button>
+                    <hr style={{margin: '15px 0', borderTop: '1px dotted #555'}}/>
+                    
+                    <h5>Fixed Price Sale</h5>
+                    <label htmlFor="price-input" style={{marginRight: '5px'}}>Price (ETH): </label>
+                    <input id="price-input" type="text" value={listPrice} onChange={(e) => setListPrice(e.target.value)} placeholder="e.g., 0.1" style={{width: '100px'}}/>
+                    <button
+                      onClick={handleListCard}
+                      disabled={!listTokenId || !listPrice || !isTokenApproved || ((isWritePending || isConfirming) && currentActionInfo.type === 'list')}
+                    >
+                      {((isWritePending || isConfirming) && currentActionInfo.type === 'list') ? (isConfirming ? 'Listing (Confirming...)' : 'Sending to Wallet...') :
+                       (listStatus && !listStatus.includes('listed') && !listStatus.includes('failed')) ? listStatus : '2. List Card'}
+                    </button>
+                    
+                    <h5 style={{marginTop: '20px'}}>Auction</h5>
+                    <label htmlFor="auction-start-price" style={{marginRight: '5px'}}>Start Price (ETH): </label>
+                    <input id="auction-start-price" type="text" value={createAuctionStartingPrice} onChange={(e) => setCreateAuctionStartingPrice(e.target.value)} placeholder="e.g., 0.05" style={{width: '100px'}}/>
+                    <br/>
+                    <label htmlFor="auction-duration" style={{marginRight: '5px'}}>Duration (minutes): </label>
+                    <input id="auction-duration" type="number" value={createAuctionDurationMinutes} onChange={(e) => setCreateAuctionDurationMinutes(e.target.value)} placeholder="e.g., 60" style={{width: '100px'}}/>
+                    <button
+                      onClick={() => {
+                        if (listTokenId) {
+                          setCreateAuctionTokenId(listTokenId); 
+                          handleCreateAuction();
+                        } else {
+                          alert("Please select a token ID from the dropdown first.");
+                        }
+                      }}
+                      disabled={!listTokenId || !createAuctionStartingPrice || !createAuctionDurationMinutes || !isTokenApproved || ((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction')}
+                    >
+                      {((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction') ? (isConfirming ? 'Creating Auction (Confirming...)' : 'Sending...') : '3. Create Auction'}
+                    </button>
+                  </div>
                   {/* Display specific errors if they occurred during these actions */}
                   {(writeError && (currentActionInfo.type === 'approve' || currentActionInfo.type === 'list' || currentActionInfo.type === 'createAuction')) && <p style={{ color: 'red' }}>Tx Error: {writeError.shortMessage || writeError.message}</p>}
                   {/* Display final status messages (success/failure) */}
@@ -3046,16 +3194,16 @@ function App() {
             </div>
 
             {/* Transaction Status Area */}
-            {currentActionInfo.type && (isWritePending || isConfirming) && (
-              <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f0f0f0' }}>
+            {currentActionInfo.type && (isWritePending || isConfirming || writeTxHash) && (
+              <div className="transaction-status-area">
                 <h4>Transaction: {currentActionInfo.type} {currentActionInfo.tokenId || currentActionInfo.details || ''}</h4>
                 {isWritePending && <p>Please confirm in your wallet...</p>}
                 {writeTxHash && !isConfirming && <p>Transaction sent (Hash: {writeTxHash.substring(0,10)}...). Waiting for confirmation...</p>}
                 {isConfirming && <p>Confirming transaction (Hash: {writeTxHash?.substring(0,10)}...)...</p>}
               </div>
             )}
-            <div>
-              <hr style={{ margin: '20px 0' }} />
+            <div className="section-container">
+              <hr />
               <h2>Marketplace Listings</h2>
               <button onClick={() => setRefreshMarketplaceTrigger(prev => prev + 1)} disabled={isLoadingMarketplace}>
                 {isLoadingMarketplace ? 'Refreshing Marketplace...' : 'Refresh Marketplace'}
@@ -3076,16 +3224,9 @@ function App() {
               {/* Display the list if it has items. Apply opacity effect during refresh. */}
               {/* This section will remain visible even if isLoadingMarketplace is true, showing old items until new ones arrive. */}
               {marketplaceListings.length > 0 && (
-                <div style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '20px',
-                  marginTop: '10px',
-                  opacity: isLoadingMarketplace ? 0.6 : 1, // Fade slightly during refresh
-                  transition: 'opacity 0.3s ease-in-out', // Smooth transition for opacity
-                }}>
+                <div className="flex-wrap-container" style={{ opacity: isLoadingMarketplace ? 0.6 : 1, transition: 'opacity 0.3s ease-in-out' }}>
                   {marketplaceListings.map((item) => (
-                    <div key={item.listingId} style={{ border: '1px solid #ccc', padding: '15px', width: '250px' }}>
+                    <div key={item.listingId} className="card" style={{ width: '250px' }}>
                       {item.pokemonData?.imageUrl && <img src={item.pokemonData.imageUrl} alt={item.pokemonData.name || `Token ${item.tokenId}`} style={{ maxWidth: '100%', height: 'auto', marginBottom: '10px' }} />}
                       <h4>{item.pokemonData?.name || `Token ID: ${item.tokenId}`}</h4>
                       <p>Listing ID: {item.listingId}</p>
@@ -3115,20 +3256,20 @@ function App() {
             </div>
 
             {/* Active Auctions Section */}
-            <div>
-              <hr style={{ margin: '20px 0' }} />
+            <div className="section-container">
+              <hr />
               <h2>Active Auctions</h2>
               <button onClick={() => setRefreshAuctionsTrigger(prev => prev + 1)} disabled={isLoadingAuctions}>
                 {isLoadingAuctions ? 'Refreshing Auctions...' : 'Refresh Auctions'}
               </button>
               {isLoadingAuctions && activeAuctions.length === 0 && <p>Loading auctions...</p>}
               {auctionsError && <p style={{ color: 'red' }}>{auctionsError}</p>}
-              {!isLoadingAuctions && !auctionsError && activeAuctions.length === 0 && <p>No active auctions.</p>}
+              {!isLoadingAuctions && !auctionsError && activeAuctions.length === 0 && <p>No active auctions at the moment.</p>}
 
               {activeAuctions.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '10px', opacity: isLoadingAuctions ? 0.6 : 1, transition: 'opacity 0.3s ease-in-out' }}>
+                <div className="flex-wrap-container" style={{ opacity: isLoadingAuctions ? 0.6 : 1, transition: 'opacity 0.3s ease-in-out' }}>
                   {activeAuctions.map((auction) => (
-                    <div key={auction.auctionId} style={{ border: '1px solid #ccc', padding: '15px', width: '280px' }}>
+                    <div key={auction.auctionId} className="card" style={{ width: '280px' }}>
                       {auction.pokemonData?.imageUrl && <img src={auction.pokemonData.imageUrl} alt={auction.pokemonData.name || `Token ${auction.tokenId}`} style={{ maxWidth: '100%', height: 'auto', marginBottom: '10px' }} />}
                       <h4>{auction.pokemonData?.name || `Token ID: ${auction.tokenId}`} (Auction ID: {auction.auctionId})</h4>
                       {auction.pokemonData && <p style={{fontSize: '0.8em'}}>HP: {auction.pokemonData.hp}, Atk: {auction.pokemonData.attack}, Def: {auction.pokemonData.defense}</p>}
@@ -3146,7 +3287,7 @@ function App() {
                                 placeholder="Your bid (ETH)"
                                 value={bidInputs[auction.auctionId] || ''}
                                 onChange={(e) => handleBidInputChange(auction.auctionId, e.target.value)}
-                                style={{width: '60%', marginRight: '5px'}}
+                                style={{width: '100px', marginRight: '5px'}}
                               />
                               <button onClick={() => handleBid(auction.auctionId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'bid' && currentActionInfo.details?.includes(auction.auctionId))}>
                                 {((isWritePending || isConfirming) && currentActionInfo.type === 'bid' && currentActionInfo.details?.includes(auction.auctionId)) ? 'Bidding...' : 'Place Bid'}
@@ -3184,7 +3325,7 @@ function App() {
                 </div>
               )}
             </div>
-          </div>
+          </div> {/* End of main content div for connected state */}
         </>
       )}
       {!currentNetworkConfig && account.status === 'connected' && (
@@ -3193,7 +3334,49 @@ function App() {
           Please switch to Localhost (31337) or Sepolia (11155111).
         </p>
       )}
-    </>
+
+      {/* Admin Panel for PokemonCard Contract Owner */}
+      {account.status === 'connected' && POKEMON_CARD_ADDRESS && contractOwner && account.address?.toLowerCase() === contractOwner.toLowerCase() && (
+        <>
+          <div className="admin-panel">
+            <h2>👑 Admin Panel (PokemonCard Contract)</h2>
+            <p style={{color: '#1a237e'}}>Contract Owner: <strong style={{color: '#0d47a1'}}>{contractOwner}</strong></p>
+            <p><small style={{color: '#555'}}>This panel is exclusively for you, the contract owner.</small></p>
+
+            <div style={{ marginTop: '15px' }}>
+              <h4>Manage Minter Addresses</h4>
+              <input
+                type="text"
+                placeholder="Enter Address (0x...)"
+                value={minterAddressInput}
+                onChange={(e) => setMinterAddressInput(e.target.value)}
+                style={{ marginRight: '10px', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '300px' }}
+              />
+              <button onClick={() => handleSetMinter(minterAddressInput, true)} disabled={!minterAddressInput || ((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue')} style={{ backgroundColor: '#28a745' }}> {/* Green for add */}
+                {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue') ? 'Adding...' : 'Add as Minter'}
+              </button>
+              <button onClick={() => handleSetMinter(minterAddressInput, false)} disabled={!minterAddressInput || ((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse')} style={{ backgroundColor: '#dc3545' }}> {/* Red for remove */}
+                {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse') ? 'Removing...' : 'Remove Minter'}
+              </button>
+              {setMinterStatus && <p><small style={{color: setMinterStatus.includes('✅') ? 'green' : (setMinterStatus.includes('⚠️') ? 'red' : '#333')}}>{setMinterStatus}</small></p>}
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+              <h4>Current Authorized Minters:</h4>
+              {isLoadingMinters && <p>Loading minters list...</p>}
+              {mintersError && <p style={{ color: 'red' }}>{mintersError}</p>}
+              {!isLoadingMinters && !mintersError && currentMinters.length === 0 && <p style={{fontStyle: 'italic'}}>No addresses are currently authorized as minters.</p>}
+              {!isLoadingMinters && !mintersError && currentMinters.length > 0 && (
+                <ul style={{ listStyleType: 'disc', paddingLeft: '20px' }}>{currentMinters.map(minter => <li key={minter}><small style={{fontFamily: 'monospace'}}>{minter}</small></li>)}</ul>
+              )}
+              <button onClick={() => setRefreshMintersTrigger(p => p + 1)} disabled={isLoadingMinters} style={{ marginTop: '10px' }}>Refresh Minters List</button>
+            </div>
+          </div>
+        </>
+      )}
+
+    </div> {/* End of centered content div */}
+  </>
   )
 }
 
