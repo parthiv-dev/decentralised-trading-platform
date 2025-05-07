@@ -9,14 +9,15 @@ import { useAccount, // Removed useConnect, useDisconnect
   useBalance, // For displaying ETH balance if needed, not directly for contract interaction here
   usePublicClient, // To get a public client for read operations
   useWatchContractEvent, // For listening to contract events
-} from 'wagmi';
-import { parseEther, formatEther, parseAbiItem } from 'viem'; // For converting ETH values and parsing event ABI
+} from 'wagmi'; 
+import { parseEther, formatEther, parseAbiItem, decodeErrorResult } from 'viem'; // For converting ETH values and parsing event ABI. Added decodeErrorResult.
 import { AccountConnect } from '../components/AccountConnect'; // New
 import { MintCardForm } from '../components/MintCardForm';   // New
 import { PokemonJsonData, DisplayPokemonData } from '../interfaces'; // New
 
-// --- IMPORTANT: REPLACE THESE WITH YOUR ACTUAL ABIs ---
-const pokemonCardAbi = [
+
+
+const pokemonCardAbi =  [
   {
     "inputs": [
       {
@@ -464,6 +465,19 @@ const pokemonCardAbi = [
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getNextTokenId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -937,7 +951,7 @@ const pokemonCardAbi = [
   }
 ] as const // <-- Important: use "as const"
 
-const tradingPlatformAbi = [
+const tradingPlatformAbi =  [
   {
     "inputs": [
       {
@@ -1166,6 +1180,22 @@ const tradingPlatformAbi = [
   {
     "inputs": [],
     "name": "TradingPlatform__PriceMustBePositive",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "TradingPlatform__SellerNoLongerOwnsToken",
     "type": "error"
   },
   {
@@ -1911,8 +1941,8 @@ const tradingPlatformAbi = [
 const contractAddresses = {
   [31337]: { // localhost (Hardhat)
     name: 'Localhost (Hardhat)',
-    pokemonCardAddress: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0' as `0x${string}`,
-    tradingPlatformAddress: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9' as `0x${string}`,
+    pokemonCardAddress: '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`,
+    tradingPlatformAddress: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512' as `0x${string}`,
   },
   [11155111]: { // sepolia
     name: 'Sepolia Testnet',
@@ -1931,9 +1961,12 @@ function App() {
   const [listPrice, setListPrice] = useState('');
   const [isTokenApproved, setIsTokenApproved] = useState(false);
 
-  // New state for minting
-  const [mintPokemonIdInput, setMintPokemonIdInput] = useState('1'); // Default to Pokemon ID 1
+  // State for minting status
   const [mintStatus, setMintStatus] = useState('');
+
+  // State to track the current ongoing transaction type and associated data
+  const [currentActionInfo, setCurrentActionInfo] = useState<{ type: string | null; tokenId?: string; details?: string }>({ type: null });
+
 
   // IPFS Configuration
   const IPFS_METADATA_CID = 'bafybeib3a5is3s42srpxived3bdh7y3vwu6lozo6w7htjedcflnem4c2bu';
@@ -1973,10 +2006,21 @@ function App() {
   const TRADING_PLATFORM_ADDRESS = currentNetworkConfig?.tradingPlatformAddress;
 
   // --- Wagmi Hooks for Contract Interactions ---
-  const { writeContractAsync, data: writeTxHash, isPending: isWritePending, error: writeError } = useWriteContract();
+  const { writeContractAsync, data: writeTxHash, isPending: isWritePending, error: writeError, reset: resetWriteContract } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed, data: receipt, error: confirmationError } = useWaitForTransactionReceipt({
     hash: writeTxHash,
   });
+
+  // Read the next token ID that will be minted
+  const { data: nextTokenIdData, refetch: refetchNextTokenId, isLoading: isLoadingNextTokenId } = useReadContract({
+    abi: pokemonCardAbi,
+    address: POKEMON_CARD_ADDRESS,
+    functionName: 'getNextTokenId',
+    query: { // wagmi v2 query options
+      enabled: !!POKEMON_CARD_ADDRESS,
+    }
+  });
+  const MAX_POKEMON_ID = 100; // Define the maximum ID that can be minted
 
   // Read user's Pokemon balance
   const { data: pokemonBalance, refetch: refetchBalance, isLoading: isLoadingBalance } = useReadContract({
@@ -2066,64 +2110,56 @@ function App() {
       setIsLoadingTokenIds(true);
       setFetchTokenIdsError(null);
       const ids: string[] = [];
-
-      // Fetching token IDs
-      try {
-        for (let i = 0; i < balanceNum; i++) {
-          const tokenIdResult = await publicClient.readContract({
-            abi: pokemonCardAbi,
-            address: POKEMON_CARD_ADDRESS!,
-            functionName: 'tokenOfOwnerByIndex',
-            args: [account.address!, BigInt(i)],
-          });
-          // Ensure tokenIdResult is not undefined and can be converted to string
-          if (typeof tokenIdResult === 'bigint' || typeof tokenIdResult === 'number') {
-            ids.push(tokenIdResult.toString());
-          } else {
-            // Handle cases where tokenOfOwnerByIndex might not return a simple number/bigint
-            // or if the type is unexpected. For now, we'll log and skip.
-            console.warn(`Unexpected token ID format for index ${i}:`, tokenIdResult);
+      
+      try { // Main try block for all fetching operations
+        // Step 1: Fetching token IDs
+        if (balanceNum > 0) {
+          for (let i = 0; i < balanceNum; i++) {
+            const tokenIdResult = await publicClient.readContract({
+              abi: pokemonCardAbi,
+              address: POKEMON_CARD_ADDRESS!,
+              functionName: 'tokenOfOwnerByIndex',
+              args: [account.address!, BigInt(i)],
+            });
+            if (typeof tokenIdResult === 'bigint' || typeof tokenIdResult === 'number') {
+              ids.push(tokenIdResult.toString());
+            } else {
+              console.warn(`Unexpected token ID format for index ${i}:`, tokenIdResult);
+            }
           }
         }
         setUserPokemonIds(ids);
-      } catch (e: any) {
-        console.error("Error fetching token IDs (tokenOfOwnerByIndex):", e);
-        setFetchTokenIdsError(`Failed to fetch token IDs: ${e.message || 'Unknown error'}`);
-        setUserPokemonIds([]); // Clear IDs on error
-        setOwnedPokemonDetails([]);
-        setIsLoadingTokenIds(false);
-        return; // Stop if IDs couldn't be fetched
-      }
 
-      // Fetching full details for each token ID
-      if (ids.length > 0) {
-        try {
+        // Step 2: Fetching full details for each token ID
+        if (ids.length > 0) {
           const detailsPromises = ids.map(id =>
             fetchPokemonDisplayData(id, publicClient, POKEMON_CARD_ADDRESS!)
           );
           const resolvedDetails = (await Promise.all(detailsPromises)).filter(d => d !== null) as DisplayPokemonData[];
           setOwnedPokemonDetails(resolvedDetails);
-
+  
           if (resolvedDetails.length > 0) {
             if (!listTokenId || !resolvedDetails.some(p => p.tokenId === listTokenId)) {
               setListTokenId(resolvedDetails[0].tokenId);
             }
           } else {
-            setListTokenId('');
+            setListTokenId(''); // No details resolved, clear selection
           }
-        } catch (e: any) {
-            console.error("Error fetching Pokemon details for owned tokens:", e);
-            setFetchTokenIdsError(`Failed to fetch Pokemon details: ${e.message || 'Unknown error'}`);
-            setOwnedPokemonDetails([]);
+        } else {
+          // If ids array is empty (either from 0 balance or if the loop above didn't populate it)
+          setOwnedPokemonDetails([]);
+          setListTokenId('');
         }
-      } else {
-        // This case handles if the ids array is empty after attempting to fetch them.
-        // For example, if balanceNum > 0 but tokenOfOwnerByIndex didn't yield any valid IDs,
-        // or if the initial fetch of IDs failed and cleared the ids array.
+
+      } catch (e: any) { // Main catch block for any error in the try block
+        console.error("Error during token ID or details fetching:", e);
+        setFetchTokenIdsError(`Failed to fetch Pokémon data: ${e.message || 'Unknown error'}`);
+        // Ensure states are reset on error
+        setUserPokemonIds([]); // Clear IDs if any part of the try failed
         setOwnedPokemonDetails([]);
         setListTokenId(''); // Also clear listTokenId if there are no details to show
       }
-    } finally {
+    finally { // Main finally block, attached to the main try-catch
         setIsLoadingTokenIds(false);
       }
     };
@@ -2137,7 +2173,9 @@ function App() {
     address: POKEMON_CARD_ADDRESS,
     functionName: 'getApproved',
     args: [listTokenId ? BigInt(listTokenId) : BigInt(0)], // Pass a valid BigInt, even if 0
-    enabled: !!listTokenId && !!POKEMON_CARD_ADDRESS && !!TRADING_PLATFORM_ADDRESS, // `enabled` is a top-level option
+    query: { // For wagmi v2, query options like 'enabled' go inside the 'query' object
+      enabled: !!listTokenId && !!POKEMON_CARD_ADDRESS && !!TRADING_PLATFORM_ADDRESS,
+    }
   });
 
   useEffect(() => {
@@ -2151,27 +2189,47 @@ function App() {
 
   // --- Transaction Functions ---
   const handleMint = async () => {
-    if (!POKEMON_CARD_ADDRESS || !account.address) {
-      alert("Please connect your wallet and ensure you are on a supported network.");
-      return
-    }
-    setMintStatus('Minting...');
-    if (!mintPokemonIdInput || isNaN(parseInt(mintPokemonIdInput)) || parseInt(mintPokemonIdInput) < 1 || parseInt(mintPokemonIdInput) > 100) {
-      setMintStatus("Please enter a valid Pokemon ID (1-100).");
+    if (!POKEMON_CARD_ADDRESS || !account.address || !publicClient) {
+      alert("Please connect your wallet, ensure you are on a supported network, and public client is available.");
+      setCurrentActionInfo({ type: null });
       return;
     }
 
+    // Fetch the latest nextTokenId directly to ensure we're checking against the most current state
+    let expectedNextPokemonId: bigint;
     try {
-      // 1. Construct metadata URI and fetch JSON
-      const metadataIpfsUri = `ipfs://${IPFS_METADATA_CID}/${mintPokemonIdInput}.json`;
+      const nextIdResult = await publicClient.readContract({ // Use publicClient for one-off read
+        abi: pokemonCardAbi,
+        address: POKEMON_CARD_ADDRESS,
+        functionName: 'getNextTokenId',
+      });
+      expectedNextPokemonId = BigInt(nextIdResult as number | bigint);
+    } catch (e) {
+      setMintStatus(`Failed to fetch next token ID: ${(e as Error).message}`);
+      setCurrentActionInfo({ type: null });
+      return;
+    }
+
+    if (expectedNextPokemonId > BigInt(MAX_POKEMON_ID)) {
+      setMintStatus(`All ${MAX_POKEMON_ID} Pokémon have been minted! No more can be minted.`);
+      setCurrentActionInfo({ type: null }); // Clear action if pre-check fails
+      return;
+    }
+
+    const pokemonIdForMetadata = expectedNextPokemonId.toString(); // This ID should match the metadata file name (e.g., 50.json)
+
+    try {
+      const metadataIpfsUri = `ipfs://${IPFS_METADATA_CID}/${pokemonIdForMetadata}.json`;
+      // Set current action info with the expected ID for user feedback
+      setCurrentActionInfo({ type: 'mint', details: `Pokemon (Expected ID: ${pokemonIdForMetadata})` });
+
       const resolvedMetadataUrl = resolveIpfsUri(metadataIpfsUri);
       if (!resolvedMetadataUrl) throw new Error("Could not resolve IPFS metadata URL.");
 
       const response = await fetch(resolvedMetadataUrl);
-      if (!response.ok) throw new Error(`Failed to fetch Pokemon metadata from IPFS (ID: ${mintPokemonIdInput})`);
+      if (!response.ok) throw new Error(`Failed to fetch Pokemon metadata from IPFS (for expected ID: ${pokemonIdForMetadata})`);
       const jsonData: PokemonJsonData = await response.json();
 
-      // 2. Parse stats from JSON
       const name = jsonData.name;
       const hp = BigInt(getStatFromJsonAttributes(jsonData.attributes, "HP"));
       const attack = BigInt(getStatFromJsonAttributes(jsonData.attributes, "Attack"));
@@ -2179,7 +2237,7 @@ function App() {
       const speed = BigInt(getStatFromJsonAttributes(jsonData.attributes, "Speed"));
       const type1 = getStatFromJsonAttributes(jsonData.attributes, "Type 1", false);
       let type2 = getStatFromJsonAttributes(jsonData.attributes, "Type 2", false);
-      if (type2 === 0) type2 = ""; // Ensure type2 is empty string if not found or numeric 0
+      if (type2 === 0 || type2 === "0") type2 = ""; // Ensure type2 is empty string if not found or numeric 0
       const special = BigInt(getStatFromJsonAttributes(jsonData.attributes, "Special"));
 
       if (!name || !type1) {
@@ -2187,15 +2245,18 @@ function App() {
       }
 
       // 3. Call safeMint
+      // safeMint does not take tokenId, it's assigned by the contract.
+      // The URI and attributes correspond to the *next available* Pokemon ID.
       await writeContractAsync({
         abi: pokemonCardAbi,
         address: POKEMON_CARD_ADDRESS,
         functionName: 'safeMint',
         args: [account.address, metadataIpfsUri, name, hp, attack, defense, speed, type1, type2, special],
       });
+      setMintStatus(`Minting Pokemon (Expected ID: ${pokemonIdForMetadata}): Transaction submitted, awaiting confirmation...`);
     } catch (e: any) {
       setMintStatus(`Minting failed: ${e.shortMessage || e.message}`);
-      console.error(e);
+      setCurrentActionInfo({ type: null }); // Reset action on direct failure from writeContractAsync
     }
   };
 
@@ -2204,7 +2265,7 @@ function App() {
       alert("Please select a token and ensure contract addresses are available.");
       return;
     }
-    setApproveStatus(`Approving token ${listTokenId}...`);
+    setCurrentActionInfo({ type: 'approve', tokenId: listTokenId });
     try {
       await writeContractAsync({
         abi: pokemonCardAbi,
@@ -2212,9 +2273,10 @@ function App() {
         functionName: 'approve',
         args: [TRADING_PLATFORM_ADDRESS, BigInt(listTokenId)],
       });
+      setApproveStatus(`Approving token ${listTokenId}: Transaction submitted, awaiting confirmation...`);
     } catch (e: any) {
       setApproveStatus(`Approval failed: ${e.shortMessage || e.message}`);
-      console.error(e);
+      setCurrentActionInfo({ type: null });
     }
   };
 
@@ -2223,7 +2285,7 @@ function App() {
       alert("Ensure token is selected, price is set, and token is approved.");
       return;
     }
-    setListStatus(`Listing token ${listTokenId} for ${listPrice} ETH...`);
+    setCurrentActionInfo({ type: 'list', tokenId: listTokenId, details: `for ${listPrice} ETH` });
     try {
       const priceInWei = parseEther(listPrice);
       await writeContractAsync({
@@ -2232,9 +2294,10 @@ function App() {
         functionName: 'listItem',
         args: [BigInt(listTokenId), priceInWei],
       });
+      setListStatus(`Listing token ${listTokenId}: Transaction submitted, awaiting confirmation...`);
     } catch (e: any) {
       setListStatus(`Listing failed: ${e.shortMessage || e.message}`);
-      console.error(e);
+      setCurrentActionInfo({ type: null });
     }
   };
 
@@ -2243,7 +2306,7 @@ function App() {
       alert("Please connect your wallet and ensure contract addresses are available.");
       return;
     }
-    setBuyStatus(`Buying item ${listingId}...`);
+    setCurrentActionInfo({ type: 'buy', tokenId: listingId }); // Using tokenId to store listingId here
     try {
       await writeContractAsync({
         abi: tradingPlatformAbi,
@@ -2252,9 +2315,56 @@ function App() {
         args: [BigInt(listingId)],
         value: priceInWei, // Send ETH with the transaction
       });
+      // If writeContractAsync is successful, the useEffect for confirmation will handle status updates.
     } catch (e: any) {
-      setBuyStatus(`Buy failed for item ${listingId}: ${e.shortMessage || e.message}`);
-      console.error(e);
+      console.error(`Full error in handleBuyItem for listing ${listingId}:`, e); // Log the full error object
+
+      let detailedMessage = e.shortMessage || e.message || "Unknown error during buy transaction.";
+
+      // Attempt to extract more specific revert reasons from the error object (common viem/wagmi patterns)
+      const cause = e.cause;
+      if (cause && typeof cause === 'object') {
+        detailedMessage += ` | Cause Message: ${cause.shortMessage || cause.message || "No specific cause message."}`;
+
+        if ('data' in cause && cause.data && typeof cause.data === 'string' && cause.data.startsWith('0x')) {
+          const revertData = cause.data as `0x${string}`;
+          let decoded = false;
+
+          // Try decoding with TradingPlatform ABI (for its custom errors)
+          try {
+            const decodedError = decodeErrorResult({ abi: tradingPlatformAbi, data: revertData });
+            detailedMessage += ` | TP Revert: ${decodedError.errorName}(${decodedError.args?.join(', ') || ''})`;
+            decoded = true;
+          } catch { /* ignore if not decodable with this ABI */ }
+
+          // If not decoded, try with PokemonCard ABI (for errors from transferFrom)
+          if (!decoded) {
+            try {
+              const decodedError = decodeErrorResult({ abi: pokemonCardAbi, data: revertData });
+              detailedMessage += ` | PC Revert: ${decodedError.errorName}(${decodedError.args?.join(', ') || ''})`;
+              decoded = true;
+            } catch { /* ignore */ }
+          }
+
+          // If still not decoded, try generic Error(string)
+          if (!decoded && revertData.startsWith('0x08c379a0')) { // Error(string) selector
+            try {
+              const errorStringAbi = [{ type: 'error', name: 'Error', inputs: [{ type: 'string', name: 'message' }] }] as const;
+              const reason = decodeErrorResult({ abi: errorStringAbi, data: revertData });
+              detailedMessage += ` | Decoded String Revert: ${reason.args[0]}`;
+              decoded = true;
+            } catch { /* ignore */ }
+          }
+
+          if (!decoded) {
+            detailedMessage += ` | Raw Revert Data: ${revertData}`;
+          }
+        } else if ('reason' in cause && typeof cause.reason === 'string' && cause.reason) {
+            detailedMessage += ` | Cause Revert Reason: ${cause.reason}`;
+        }
+      }
+      setBuyStatus(`Buy failed for item ${listingId}: ${detailedMessage}`);
+      setCurrentActionInfo({ type: null });
     }
   };
 
@@ -2263,7 +2373,7 @@ function App() {
       alert("Please connect your wallet and ensure contract addresses are available.");
       return;
     }
-    setBurnStatus(`Burning token ${tokenIdToBurn}...`);
+    setCurrentActionInfo({ type: 'burn', tokenId: tokenIdToBurn });
     try {
       await writeContractAsync({
         abi: pokemonCardAbi,
@@ -2271,9 +2381,10 @@ function App() {
         functionName: 'burn',
         args: [BigInt(tokenIdToBurn)],
       });
+      setBurnStatus(`Burning token ${tokenIdToBurn}: Transaction submitted, awaiting confirmation...`);
     } catch (e: any) {
       setBurnStatus(`Burn failed for token ${tokenIdToBurn}: ${e.shortMessage || e.message}`);
-      console.error(e);
+      setCurrentActionInfo({ type: null });
     }
   };
 
@@ -2434,67 +2545,100 @@ function App() {
 
   // Effect to handle transaction confirmation feedback and refetch data
   useEffect(() => {
-    if (isConfirmed && receipt) {
-      // A transaction was confirmed. Determine what it was and update UI.
-      if (mintStatus.includes('Minting')) {
-        setMintStatus('✅ Mint successful!');
-        refetchBalance(); // This will trigger the useEffect to fetch token IDs
-      }
-      if (approveStatus.includes('Approving')) {
-        setApproveStatus(`✅ Token ${listTokenId} approved!`);
-        refetchApprovalStatus(); // Re-check approval status
-      }
-      if (listStatus.includes('Listing')) {
-        setListStatus(`✅ Token ${listTokenId} listed!`);
-        // After listing, the token is still owned by the user but is approved and marked as listed in the platform.
-        // We should re-check its approval status and potentially refresh the list of owned tokens,
-        // especially if the UI logic changes to filter out or differently display listed tokens.
+    if (isConfirmed && receipt && currentActionInfo.type) {
+      const actionType = currentActionInfo.type;
+      const actionTokenId = currentActionInfo.tokenId;
+      const actionDetails = currentActionInfo.details;
+
+      let successMessage = '';
+
+      if (actionType === 'mint') {
+        successMessage = `✅ Mint successful! (${actionDetails || ''})`;
+        setMintStatus(successMessage);
+        refetchBalance(); // Refetch user's balance of NFTs
+        if (refetchNextTokenId) refetchNextTokenId(); // Refetch next token ID for next mint
+      } else if (actionType === 'approve' && actionTokenId) {
+        successMessage = `✅ Token ${actionTokenId} approved!`;
+        setApproveStatus(successMessage);
         refetchApprovalStatus();
-        refetchBalance(); // This will re-trigger fetching token IDs.
+      } else if (actionType === 'list' && actionTokenId) {
+        successMessage = `✅ Token ${actionTokenId} listed ${actionDetails || ''}!`;
+        setListStatus(successMessage);
+        refetchApprovalStatus();
+        refetchBalance();
         setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
-      }
-      if (buyStatus.includes('Buying')) {
-        setBuyStatus(`✅ Item bought successfully!`);
+      } else if (actionType === 'buy' && actionTokenId) { // actionTokenId is listingId here
+        successMessage = `✅ Item (Listing ID: ${actionTokenId}) bought successfully!`;
+        setBuyStatus(successMessage);
         setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
         refetchBalance(); // Buyer's NFT balance and ETH balance changed
-      }
-      if (burnStatus.includes('Burning')) {
-        setBurnStatus(`✅ Token burned successfully!`);
+      } else if (actionType === 'burn' && actionTokenId) {
+        successMessage = `✅ Token ${actionTokenId} burned successfully!`;
+        setBurnStatus(successMessage);
         refetchBalance(); // Refresh user's NFT list
-        // If the burned token was selected for listing, clear it
+        if (listTokenId === actionTokenId) {
+          setListTokenId(''); // Clear selection if burned token was selected for listing
+        }
       }
-      // Reset generic statuses after a short delay
-      setTimeout(() => {
-        if (mintStatus.includes('successful')) setMintStatus('');
-        if (approveStatus.includes('approved')) setApproveStatus('');
-        if (listStatus.includes('listed')) setListStatus('');
-        if (buyStatus.includes('successful')) setBuyStatus('');
-        if (burnStatus.includes('successfully')) setBurnStatus('');
+
+      setCurrentActionInfo({ type: null }); // Reset action info
+      resetWriteContract(); // Reset wagmi write hook state
+
+      const timer = setTimeout(() => {
+        if (actionType === 'mint' && mintStatus.includes('successful')) setMintStatus('');
+        if (actionType === 'approve' && approveStatus.includes('approved')) setApproveStatus('');
+        if (actionType === 'list' && listStatus.includes('listed')) setListStatus('');
+        if (actionType === 'buy' && buyStatus.includes('successful')) setBuyStatus('');
+        if (actionType === 'burn' && burnStatus.includes('successfully')) setBurnStatus('');
       }, 4000);
-    } else if (confirmationError) {
-        const errorMsg = `⚠️ Transaction failed: ${confirmationError.shortMessage || confirmationError.message}`;
-        if (mintStatus.includes('Minting')) setMintStatus(errorMsg);
-        if (approveStatus.includes('Approving')) setApproveStatus(errorMsg);
-        if (listStatus.includes('Listing')) setListStatus(errorMsg);
-        if (buyStatus.includes('Buying')) setBuyStatus(errorMsg);
-        if (burnStatus.includes('Burning')) setBurnStatus(errorMsg);
+      return () => clearTimeout(timer);
 
-        // Clear error messages after a longer delay
-        setTimeout(() => {
-          if (mintStatus.includes('failed')) setMintStatus('');
-          if (approveStatus.includes('failed')) setApproveStatus('');
-          if (listStatus.includes('failed')) setListStatus('');
-          if (buyStatus.includes('failed')) setBuyStatus('');
-          if (burnStatus.includes('failed')) setBurnStatus('');
-        }, 7000);
+    } else if (confirmationError && currentActionInfo.type) {
+      const actionType = currentActionInfo.type;
+      const actionTokenId = currentActionInfo.tokenId;
+      const actionDetails = currentActionInfo.details;
+
+      const baseErrorMsg = `⚠️ Transaction failed`;
+      const specificErrorMsg = `${baseErrorMsg}: ${confirmationError.shortMessage || confirmationError.message}`;
+      let userFacingError = specificErrorMsg;
+
+      if (actionType === 'mint') {
+        // actionDetails already contains "Pokemon (Expected ID: X)"
+        userFacingError = `⚠️ Minting failed ${actionDetails || ''}: ${confirmationError.shortMessage || confirmationError.message}`;
+        setMintStatus(userFacingError);
+      } else if (actionType === 'approve' && actionTokenId) {
+        userFacingError = `⚠️ Approval for token ${actionTokenId} failed: ${confirmationError.shortMessage || confirmationError.message}`;
+        setApproveStatus(userFacingError);
+      } else if (actionType === 'list' && actionTokenId) {
+        userFacingError = `⚠️ Listing token ${actionTokenId} failed: ${confirmationError.shortMessage || confirmationError.message}`;
+        setListStatus(userFacingError);
+      } else if (actionType === 'buy' && actionTokenId) {
+        userFacingError = `⚠️ Buying item (Listing ID: ${actionTokenId}) failed: ${confirmationError.shortMessage || confirmationError.message}`;
+        setBuyStatus(userFacingError);
+      } else if (actionType === 'burn' && actionTokenId) {
+        userFacingError = `⚠️ Burning token ${actionTokenId} failed: ${confirmationError.shortMessage || confirmationError.message}`;
+        setBurnStatus(userFacingError);
+      }
+
+      setCurrentActionInfo({ type: null }); // Reset action info
+      resetWriteContract(); // Reset wagmi write hook state
+
+      const errorTimer = setTimeout(() => {
+        if (actionType === 'mint' && mintStatus.includes('failed')) setMintStatus('');
+        if (actionType === 'approve' && approveStatus.includes('failed')) setApproveStatus('');
+        if (actionType === 'list' && listStatus.includes('failed')) setListStatus('');
+        if (actionType === 'buy' && buyStatus.includes('failed')) setBuyStatus('');
+        if (actionType === 'burn' && burnStatus.includes('failed')) setBurnStatus('');
+      }, 7000);
+      return () => clearTimeout(errorTimer);
     }
-  // Dependencies for reacting to transaction state changes.
-  // Status messages (mintStatus, etc.) are set inside, so they are not dependencies here.
-  // `listTokenId` is included because it's used in status messages.
-  // `refetchBalance` and `refetchApprovalStatus` are stable functions from wagmi hooks.
-  // The actual status strings are included to ensure the effect re-evaluates if a similar action is retried.
-  }, [isConfirmed, receipt, confirmationError, listTokenId, refetchBalance, refetchApprovalStatus, mintStatus, approveStatus, listStatus, buyStatus, burnStatus]);
-
+  }, [
+    isConfirmed, receipt, confirmationError, currentActionInfo,
+    refetchBalance, refetchApprovalStatus, refetchNextTokenId, resetWriteContract, // Changed refetchTotalSupply to refetchNextTokenId
+    listTokenId, setListTokenId, setRefreshMarketplaceTrigger,
+    setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, // Include setters
+    mintStatus, approveStatus, listStatus, buyStatus, burnStatus // Include status strings for timeout clearing logic
+  ]);  
   return (
     <>
       <div>
@@ -2510,13 +2654,14 @@ function App() {
             <p>Trading Platform: {TRADING_PLATFORM_ADDRESS}</p>
 
             <MintCardForm
-              mintPokemonIdInput={mintPokemonIdInput}
-              setMintPokemonIdInput={setMintPokemonIdInput}
               onMint={handleMint}
               mintStatus={mintStatus}
-              isMintingInProgress={(isWritePending || isConfirming) && mintStatus.includes('Minting')}
-              isLoadingTokenIds={isLoadingTokenIds}
-              mintingError={writeError && mintStatus.includes('Minting') ? writeError : null}
+              isMintingInProgress={(isWritePending || isConfirming) && currentActionInfo.type === 'mint'}
+              mintingError={writeError && currentActionInfo.type === 'mint' ? writeError : null}
+              // Pass calculated values for the next mint
+              expectedNextPokemonId={nextTokenIdData !== undefined ? BigInt(nextTokenIdData as number | bigint) : undefined}
+              maxPokemonIdReached={nextTokenIdData !== undefined ? (BigInt(nextTokenIdData as number | bigint) > BigInt(MAX_POKEMON_ID)) : false}
+              isLoadingNextId={isLoadingNextTokenId}
             />
 
             {/* Owned NFTs and Listing */}
@@ -2538,12 +2683,11 @@ function App() {
                         <p style={{fontSize: '0.8em', margin: '2px 0'}}>Types: {pokemon.type1}{pokemon.type2 ? ` / ${pokemon.type2}` : ''}</p>
                         <button
                           onClick={() => handleBurn(pokemon.tokenId)}
-                          disabled={isWritePending || isConfirming || (burnStatus.includes('Burning') && burnStatus.includes(pokemon.tokenId))}
+                          disabled={(isWritePending || isConfirming) && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId}
                           style={{ marginTop: '5px', width: '100%' }}
                         >
-                          { (isWritePending && burnStatus.includes(pokemon.tokenId)) ? 'Sending...' : (isConfirming && burnStatus.includes(pokemon.tokenId)) ? 'Confirming Burn...' : `Burn Token ${pokemon.tokenId}` }
+                          { (isWritePending && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? 'Sending...' : (isConfirming && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? 'Confirming Burn...' : `Burn Token ${pokemon.tokenId}` }
                         </button>
-                      <button
                       </div>
                     ))}
                     {burnStatus && <p><small>{burnStatus}</small></p>}
@@ -2559,25 +2703,25 @@ function App() {
                   <br />
                   <button
                     onClick={handleApprove}
-                    disabled={!listTokenId || isTokenApproved || isWritePending || isConfirming || isLoadingApprovalStatus || approveStatus.includes('Approving')}
+                    disabled={!listTokenId || isTokenApproved || isLoadingApprovalStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'approve')}
                   >
                     {isLoadingApprovalStatus ? 'Checking Approval...' :
                      isTokenApproved ? '✅ Approved' :
-                     (isWritePending && approveStatus.includes('Approving')) ? 'Sending to Wallet...' :
-                     (isConfirming && approveStatus.includes('Approving')) ? 'Approving (Confirming...)' :
-                     approveStatus || '1. Approve Marketplace'}
+                     ((isWritePending || isConfirming) && currentActionInfo.type === 'approve') ? (isConfirming ? 'Approving (Confirming...)' : 'Sending to Wallet...') :
+                     (approveStatus && !approveStatus.includes('approved') && !approveStatus.includes('failed')) ? approveStatus : '1. Approve Marketplace'}
                   </button>
                   <button
                     onClick={handleListCard}
-                    disabled={!listTokenId || !listPrice || !isTokenApproved || isWritePending || isConfirming || listStatus.includes('Listing')}
+                    disabled={!listTokenId || !listPrice || !isTokenApproved || ((isWritePending || isConfirming) && currentActionInfo.type === 'list')}
                   >
-                    {(isWritePending && listStatus.includes('Listing')) ? 'Sending to Wallet...' :
-                     (isConfirming && listStatus.includes('Listing')) ? 'Listing (Confirming...)' :
-                     listStatus || '2. List Card'}
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'list') ? (isConfirming ? 'Listing (Confirming...)' : 'Sending to Wallet...') :
+                     (listStatus && !listStatus.includes('listed') && !listStatus.includes('failed')) ? listStatus : '2. List Card'}
                   </button>
-                  {(writeError && (approveStatus || listStatus)) && <p style={{ color: 'red' }}>Tx Error: {writeError.shortMessage || writeError.message}</p>}
-                  {approveStatus && !approveStatus.includes('Approving') && !isTokenApproved && <p><small>{approveStatus}</small></p>}
-                  {listStatus && !listStatus.includes('Listing') && <p><small>{listStatus}</small></p>}
+                  {/* Display specific errors if they occurred during these actions */}
+                  {(writeError && (currentActionInfo.type === 'approve' || currentActionInfo.type === 'list')) && <p style={{ color: 'red' }}>Tx Error: {writeError.shortMessage || writeError.message}</p>}
+                  {/* Display final status messages (success/failure) */}
+                  {approveStatus && (approveStatus.includes('approved') || approveStatus.includes('failed')) && <p><small>{approveStatus}</small></p>}
+                  {listStatus && (listStatus.includes('listed') || listStatus.includes('failed')) &&  <p><small>{listStatus}</small></p>}
                 </>
               ) : (
                 !isLoadingTokenIds && !fetchTokenIdsError && <p>You don't own any Pokémon NFTs yet. Try minting one!</p>
@@ -2585,12 +2729,12 @@ function App() {
             </div>
 
             {/* Transaction Status Area */}
-            {(isWritePending || isConfirming) && (
+            {currentActionInfo.type && (isWritePending || isConfirming) && (
               <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f0f0f0' }}>
-                <h4>Transaction Status</h4>
-                {isWritePending && <p>Sending transaction to your wallet...</p>}
-                {writeTxHash && <p>Transaction Hash: {writeTxHash}</p>}
-                {isConfirming && <p>Waiting for confirmation...</p>}
+                <h4>Transaction: {currentActionInfo.type} {currentActionInfo.tokenId || currentActionInfo.details || ''}</h4>
+                {isWritePending && <p>Please confirm in your wallet...</p>}
+                {writeTxHash && !isConfirming && <p>Transaction sent (Hash: {writeTxHash.substring(0,10)}...). Waiting for confirmation...</p>}
+                {isConfirming && <p>Confirming transaction (Hash: {writeTxHash?.substring(0,10)}...)...</p>}
               </div>
             )}
             <div>
@@ -2637,15 +2781,15 @@ function App() {
                       {item.seller !== account.address && (
                         <button
                           onClick={() => handleBuyItem(item.listingId, item.priceInWei)}
-                          disabled={isWritePending || isConfirming || (buyStatus.includes('Buying') && buyStatus.includes(item.listingId))}
+                          disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId)}
                         >
-                          {(isWritePending && buyStatus.includes(item.listingId)) ? 'Sending...' :
-                           (isConfirming && buyStatus.includes(item.listingId)) ? 'Confirming Buy...' :
-                           (buyStatus.includes(item.listingId) && buyStatus.includes('failed')) ? 'Buy Failed - Retry?' :
+                          {((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId) ? (isConfirming ? 'Confirming Buy...' : 'Sending...') :
+                           (buyStatus.includes(item.listingId) && buyStatus.includes('failed')) ? 'Buy Failed - Retry?' : // This part of buyStatus logic might need refinement
                            'Buy Now'}
                         </button>
                       )}
-                      {buyStatus.includes(item.listingId) && !buyStatus.includes('Buying') && <p><small>{buyStatus.replace(`item ${item.listingId}`, 'this item')}</small></p>}
+                      {/* Display final buy status for this specific item */}
+                      {buyStatus && buyStatus.includes(item.listingId) && (buyStatus.includes('successful') || buyStatus.includes('failed')) && <p><small>{buyStatus.replace(`(Listing ID: ${item.listingId})`, 'this item')}</small></p>}
                     </div>
                   ))}
                 </div>

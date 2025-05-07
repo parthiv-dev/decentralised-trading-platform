@@ -12,8 +12,8 @@ const POKEMON_CARD_CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa
 // REQUIRED: The IPFS CID of the DIRECTORY containing all your JSON metadata files (1.json, 2.json, ...).
 const IPFS_BASE_DIRECTORY_CID = "bafybeib3a5is3s42srpxived3bdh7y3vwu6lozo6w7htjedcflnem4c2bu";
 
-// Range of Pokémon file numbers to mint (e.g., 1.json to 100.json).
-const START_FILE_NUMBER = 1;
+// The highest file number for your metadata (e.g., if you have 1.json to 100.json, this should be 100).
+// The script will determine the starting file number based on the contract's totalSupply.
 const END_FILE_NUMBER = 50; // Adjust if you have fewer or more than 100 files.
 
 // Address to mint the NFTs to. Defaults to the first signer (deployer).
@@ -77,14 +77,27 @@ async function main() {
     console.log(`   Recipient Address: ${RECIPIENT_ADDRESS}`);
     console.log(`   IPFS Directory CID: ${IPFS_BASE_DIRECTORY_CID}`);
     console.log(`   IPFS Gateway: ${IPFS_GATEWAY}`);
-    console.log(`   Minting Files: ${START_FILE_NUMBER}.json to ${END_FILE_NUMBER}.json`);
-    console.log("----------------------------------------------------\n");
 
     const PokemonCardFactory = await hre.ethers.getContractFactory("PokemonCard");
     const pokemonCard = PokemonCardFactory.attach(POKEMON_CARD_CONTRACT_ADDRESS);
 
-    for (let i = START_FILE_NUMBER; i <= END_FILE_NUMBER; i++) {
-        const jsonFileName = `${i}.json`;
+    // Determine the starting file number by asking the contract for the next token ID
+    const nextTokenIdFromContract = await pokemonCard.getNextTokenId(); // Call the new getter
+    const firstFileNumberToProcess = Number(nextTokenIdFromContract); // Convert bigint to Number
+
+    console.log(`   Next Token ID from contract (via getNextTokenId): ${nextTokenIdFromContract.toString()}`);
+    console.log(`   Will attempt to mint metadata file: ${firstFileNumberToProcess}.json (expecting tokenId ${firstFileNumberToProcess}) and continue up to ${END_FILE_NUMBER}.json`);
+    console.log("----------------------------------------------------\n");
+
+    if (firstFileNumberToProcess > END_FILE_NUMBER) {
+        console.log("✅ All available Pokémon metadata (up to END_FILE_NUMBER) seems to be minted according to current totalSupply.");
+        console.log("   If you added more metadata files, ensure END_FILE_NUMBER is updated.");
+        process.exit(0);
+    }
+
+
+    for (let currentFileNumber = firstFileNumberToProcess; currentFileNumber <= END_FILE_NUMBER; currentFileNumber++) {
+        const jsonFileName = `${currentFileNumber}.json`;
         const metadataUrl = `${IPFS_GATEWAY}${IPFS_BASE_DIRECTORY_CID}/${jsonFileName}`;
         // This is the URI that will be stored on-chain by _setTokenURI
         const tokenUriForContract = `ipfs://${IPFS_BASE_DIRECTORY_CID}/${jsonFileName}`;
@@ -160,7 +173,14 @@ async function main() {
                 mintedTokenId = event.args.tokenId.toString();
             }
 
-            console.log(`   ✅ Successfully minted '${name}'! Token ID: ${mintedTokenId}. Gas Used: ${gasUsed.toString()}`);
+            if (mintedTokenId === currentFileNumber.toString()) {
+                console.log(`   ✅ Successfully minted '${name}'! Token ID: ${mintedTokenId} (Matches expected metadata file number). Gas Used: ${gasUsed.toString()}`);
+            } else {
+                // Critical Mismatch: Throw an error to stop the script.
+                const errorMessage = `CRITICAL MISMATCH: Minted Token ID '${mintedTokenId}' does not match the expected metadata file number '${currentFileNumber}' for Pokémon '${name}'. Halting script.`;
+                console.error(`   ❌ ${errorMessage}`);
+                throw new Error(errorMessage);
+            }
         } catch (error) {
             console.error(`   ❌ Failed to mint '${name}' (from ${jsonFileName}):`);
             const reason = error.reason || (error.data ? error.data.message : null) || error.message;
