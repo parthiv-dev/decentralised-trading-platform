@@ -14,14 +14,15 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
 
     // NEW: Struct to hold Pokemon card details
     struct Pokemon {
-        uint256 tokenId;
-        uint256 hp;
         string name;
-        uint256 level;
+        uint256 hp;
         uint256 attack;
         uint256 defense;
         uint256 speed;
-        string imageURI; // Not needed if image is from IPFS
+        string type1;      // New: To store Type 1 from JSON
+        string type2;      // New: To store Type 2 from JSON (can be empty if single type)
+        uint256 special;   // New: To store the "Special" stat from JSON
+        // imageURI is removed as the IPFS JSON (via tokenURI) will point to the image
     }
 
     constructor(address initialOwner)
@@ -43,7 +44,10 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
     }
 
     modifier pokemonExists(uint256 tokenId) {
-        require(tokenId < totalSupply(), "Token does not exist"); // @Matteo: This is a bit weird, don't know if we need it
+        // _nextTokenId is incremented *before* _safeMint is called with the *previous* value of _nextTokenId.
+        // So, a valid tokenId must be less than the current _nextTokenId.
+        // This also correctly handles the case where _nextTokenId is 0 (no tokens minted yet).
+        require(tokenId < _nextTokenId, "PokemonCard: Query for nonexistent token ID.");
         _;
     }
 
@@ -71,25 +75,37 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
     // Secure minting functionality that allows only the contract owner to mint new tokens
     // Changed onlyOwner to onlyAuthorized to allow authorized minters to mint
 
-    function safeMint(address to, string memory uri)
+    function safeMint(
+        address to,
+        string memory uri, // This is the IPFS URI for the JSON metadata file
+        string memory _name,
+        uint256 _hp,
+        uint256 _attack,
+        uint256 _defense,
+        uint256 _speed,
+        string memory _type1,    // New parameter
+        string memory _type2,    // New parameter
+        uint256 _special         // New parameter
+    )
         public
         onlyAuthorized
         returns (uint256)
     {
-        uint256 tokenId = _nextTokenId++;
-
-        // NEW: Create a Pokemon memory struct and assign values
+        uint256 tokenId = ++_nextTokenId;
+    
+        // Store core stats on-chain. These could be useful for direct contract interactions
+        // or simpler queries without fetching the full IPFS JSON.
         Pokemon memory pkmn = Pokemon({
-            tokenId: tokenId,
-            hp: 100,
-            name: "PokemonName", // @Matteo: How do we get the name?
-            level: 1,
-            attack: 25,
-            defense: 78,
-            speed: 100,
-            imageURI: ""
+            name: _name,
+            hp: _hp,
+            attack: _attack,
+            defense: _defense,
+            speed: _speed,
+            type1: _type1,        // Store new value
+            type2: _type2,        // Store new value
+            special: _special     // Store new value
         });
-        _pokemons[tokenId] = pkmn; // NEW: Store the Pokemon struct in the mapping
+        _pokemons[tokenId] = pkmn;
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
         emit PokemonMinted(msg.sender, tokenId); // NEW: Emit event for minting
