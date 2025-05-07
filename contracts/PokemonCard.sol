@@ -12,25 +12,24 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausable, Ownable, ERC721Burnable {
     uint256 private _nextTokenId;
 
-    // NEW: Struct to hold Pokemon card details
+    // Struct to hold Pokemon metadata
     struct Pokemon {
         string name;
         uint256 hp;
         uint256 attack;
         uint256 defense;
         uint256 speed;
-        string type1;      // New: To store Type 1 from JSON
-        string type2;      // New: To store Type 2 from JSON (can be empty if single type)
-        uint256 special;   // New: To store the "Special" stat from JSON
-        // imageURI is removed as the IPFS JSON (via tokenURI) will point to the image
+        string type1;
+        string type2;
+        uint256 special;
     }
 
+    // Constructor to initialize the contract with the name and symbol of the token
+    // and set the initial owner of the contract
     constructor(address initialOwner)
         ERC721("PokemonCard", "PKMN")
         Ownable(initialOwner)
     {}
-
-    // START OF NEW CODE
 
     // Mapping from TokenId to Pokemon struct (metadata)
     mapping(uint256 => Pokemon) private _pokemons;
@@ -38,15 +37,17 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
     // Mapping from user address to minter boolean
     mapping(address => bool) public _minters;
 
+    // Modifier to check if the caller is authorized (owner or minter) to mint tokens
     modifier onlyAuthorized() {
         require(_minters[msg.sender] || owner() == msg.sender, "User not authorized");
         _;
     }
 
+    // Modifier to check if the tokenId exists (is valid)
     modifier pokemonExists(uint256 tokenId) {
         // _nextTokenId is incremented *before* _safeMint is called with the *previous* value of _nextTokenId.
-        // So, a valid tokenId must be less than the current _nextTokenId.
-        // This also correctly handles the case where _nextTokenId is 0 (no tokens minted yet).
+        // => valid tokenId must be less than the current _nextTokenId.
+        // Also correctly handles the case where _nextTokenId is 0 (no tokens minted yet).
         require(tokenId > 0 && tokenId <= _nextTokenId, "PokemonCard: Query for nonexistent token ID.");
         _;
     }
@@ -56,42 +57,40 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
     event MinterSetTrue(address minter);
     event MinterSetFalse(address minter);
 
+    // Function to set a user as a minter
     function setMinterTrue(address _addr) external onlyOwner {
         _minters[_addr] = true;
         emit MinterSetTrue(_addr);
     }
 
+    // Function to remove a user as a minter
     function setMinterFalse(address _addr) external onlyOwner {
         _minters[_addr] = false;
         emit MinterSetFalse(_addr);
     }
 
+    // Function to get the metadata of a Pokemon by its tokenId
     function getPokemon(uint256 tokenId) external view pokemonExists(tokenId) returns (Pokemon memory) {
         return _pokemons[tokenId];
     }
 
     // Function to get the ID that will be assigned to the next token minted
     function getNextTokenId() external view returns (uint256) {
-        // _nextTokenId stores the ID of the *last* token minted.
-        // So, the next token ID will be _nextTokenId + 1.
         return _nextTokenId + 1;
     }
-    // END OF NEW CODE
-
-    // Secure minting functionality that allows only the contract owner to mint new tokens
-    // Changed onlyOwner to onlyAuthorized to allow authorized minters to mint
-
+    
+    // Secure minting functionality that allows only the authorized owner to mint new tokens
     function safeMint(
         address to,
-        string memory uri, // This is the IPFS URI for the JSON metadata file
+        string memory uri, // IPFS URI for the JSON metadata file
         string memory _name,
         uint256 _hp,
         uint256 _attack,
         uint256 _defense,
         uint256 _speed,
-        string memory _type1,    // New parameter
-        string memory _type2,    // New parameter
-        uint256 _special         // New parameter
+        string memory _type1,
+        string memory _type2,
+        uint256 _special
     )
         public
         onlyAuthorized
@@ -107,14 +106,14 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
             attack: _attack,
             defense: _defense,
             speed: _speed,
-            type1: _type1,        // Store new value
-            type2: _type2,        // Store new value
-            special: _special     // Store new value
+            type1: _type1,
+            type2: _type2,
+            special: _special
         });
         _pokemons[tokenId] = pkmn;
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
-        emit PokemonMinted(msg.sender, tokenId); // NEW: Emit event for minting
+        emit PokemonMinted(msg.sender, tokenId);
         return tokenId;
     }
 

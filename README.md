@@ -12,7 +12,7 @@ of design patterns
 - code readability and organization
 - quality of comments and documentation
 - test coverage
-- follow Official Solidity style guide
+- follow [Official Solidity style guide](https://soliditylang.org/)
 - Proper error handling throughout codebase
 
 
