@@ -185,7 +185,11 @@ of design patterns
 - follow [Official Solidity style guide](https://soliditylang.org/)
 - Proper error handling throughout codebase
 
-We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from [OpenZeppelins]()
+We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from OpenZeppelin's way of commenting e.g. [here]() (TODO).
+
+
+
+
 
 ## Conclusion
 
