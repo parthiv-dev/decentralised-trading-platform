@@ -3,7 +3,17 @@
 ## Checklist (to be removed later)
 See TODO in each paragraph!
 
-Have to implement AND explain each criteria in atleast 1 paragraph
+**Have to implement AND explain each criteria in atleast 1 paragraph**
+
+TODO for 4.2 Code Quality Standards:
+- minimization of code redundancy
+- proper implementation
+of design patterns
+- code readability and organization
+- quality of comments and documentation
+- test coverage
+- follow Official Solidity style guide
+- Proper error handling throughout codebase
 
 
 
@@ -53,7 +63,7 @@ TODO: @Matteo:
 
 - How to to run tests
 
-## Architecture Overview
+## Architecture Overview + Technical Documentation
 
 ### Smart Contracts
 
@@ -87,8 +97,10 @@ TODO for 3.2 Front Development:
 - Intuitive user interface
 - Wallet connection functionality
 - Comprehensive card marketplace and trading interface
-- Proper Web3 integration through event listeners for contract updates, transation handling and wallet integration
+- Proper Web3 integration through event listeners for contract updates, transation  handling and wallet integration
 
+TODO for 4.1 Development Environment:
+- development environment setup should be clearly documented to ensure reproducibility
 
 
 ### Security Considerations
@@ -116,11 +128,33 @@ We also rename the original image files from the [kaggle dataset](https://www.ka
 
 ## Demonstration
 
-TODO for 
+TODO for 3.4 Documentation and Presentation, 4.1 Development Environment
 - Demostrate core functionality + security features while explaining key technical decisions
 - Comprehensive test suite
 
+## Group Work Specifications
 
+TODO for 6. Group Work Specifications
+- clear documentation required for individual contributions
+- distribution of work should be equitable and clearly documented in the project submissions
+
+Matteo:
+
+Parthiv:
+
+## Use of GenAI
+TODO for 8. Use of GenAI:
+- indicate which AI tools you have used
+
+We used Github Co-Pilot, Gemini and ChatGPT for various tasks:
+- Understanding of tasks and technical terms in the coursework description
+- Simple code completion (especially for comments)
+- Understanding of code e.g. ERC721 contract of Open Zeppelin thoroughly
+- Finding mistakes in our hand-written code
+- Extensively used for Python scripts, test suites, deployment scripts and other work which involves more extensive typing than actual work
+
+We did not use or barely used GenAI for:
+- Implementing the actual contracts e.g. PokemonCard.sol
 
 ## Conclusion
 
