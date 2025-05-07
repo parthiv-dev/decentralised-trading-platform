@@ -229,3 +229,22 @@ hr {
   }
   .navbar button.active { border-bottom-color: var(--primary-color); }
 }
+
+/* Banner for paused contract */
+.contract-paused-banner {
+  background-color: #dc3545; /* A strong red color (Bootstrap's danger color) */
+  color: #ffffff; /* White text for good contrast on red */
+  border: 2px solid #bd2130; /* A darker red for the border */
+  padding: 15px;
+  margin-top: 15px;
+  margin-bottom: 15px; /* Or adjust as needed */
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.2em; /* Increased font size */
+}
+
+.contract-paused-banner p {
+  margin: 0; /* Remove default paragraph margin */
+  line-height: 1.5; /* Improve readability for multi-line messages if they occur */
+}

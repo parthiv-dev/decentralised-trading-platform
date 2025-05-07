@@ -2037,6 +2037,11 @@ function App() {
     const [mintersError, setMintersError] = useState<string | null>(null);
     const [setMinterStatus, setSetMinterStatus] = useState('');
     const [refreshMintersTrigger, setRefreshMintersTrigger] = useState(0);
+    const [totalNftSupply, setTotalNftSupply] = useState<bigint | null>(null);
+    // Admin Panel State for Pausing PokemonCard contract
+    const [isContractPaused, setIsContractPaused] = useState<boolean>(false);
+    const [isLoadingPausedStatus, setIsLoadingPausedStatus] = useState(false);
+    const [pauseContractStatus, setPauseContractStatus] = useState('');
 
   // UI State
   const [activeSection, setActiveSection] = useState<'myCards' | 'marketplace' | 'auctions' | 'admin'>('myCards');
@@ -2073,11 +2078,39 @@ function App() {
     functionName: 'owner',
     query: { enabled: !!POKEMON_CARD_ADDRESS },
   });
+
+  // Read total supply of NFTs
+  const { data: fetchedTotalSupply, isLoading: isLoadingTotalSupply, refetch: refetchTotalSupply } = useReadContract({
+    abi: pokemonCardAbi, // Ensure totalSupply is in this ABI (it's standard for ERC721Enumerable)
+    address: POKEMON_CARD_ADDRESS,
+    functionName: 'totalSupply',
+    query: { enabled: !!POKEMON_CARD_ADDRESS },
+  });
+
+  // Read PokemonCard contract paused status (for Admin Panel)
+  const { data: fetchedPausedStatus, isLoading: pausedStatusLoading, refetch: refetchPausedStatus } = useReadContract({
+    abi: pokemonCardAbi,
+    address: POKEMON_CARD_ADDRESS,
+    functionName: 'paused',
+    query: { enabled: !!POKEMON_CARD_ADDRESS }, // Anyone can view, only owner can change
+  });
+
+  useEffect(() => {
+    if (fetchedPausedStatus !== undefined) {
+      setIsContractPaused(fetchedPausedStatus as boolean);
+    }
+    setIsLoadingPausedStatus(pausedStatusLoading);
+  });
   useEffect(() => {
     if (fetchedOwner) setContractOwner(fetchedOwner as `0x${string}`);
     setIsLoadingOwner(ownerLoadingStatus);
   }, [fetchedOwner, ownerLoadingStatus]);
 
+  useEffect(() => {
+    if (fetchedTotalSupply !== undefined) {
+      setTotalNftSupply(fetchedTotalSupply as bigint);
+    }
+  }, [fetchedTotalSupply]);
   // Check if the current user is an authorized minter
   const { data: minterStatusForUser, refetch: refetchMinterStatusForUser, isLoading: isLoadingMinterStatusForUser } = useReadContract({
     abi: pokemonCardAbi,
@@ -2623,6 +2656,51 @@ function App() {
     }
   };
 
+  const handlePauseContract = async () => {
+    if (!POKEMON_CARD_ADDRESS || !account.address || !contractOwner || account.address.toLowerCase() !== contractOwner.toLowerCase()) {
+      alert("This action can only be performed by the contract owner.");
+      return;
+    }
+    if (isContractPaused) {
+      alert("PokemonCard contract is already paused.");
+      return;
+    }
+    setCurrentActionInfo({ type: 'pauseContract', details: 'Pausing PokemonCard contract' });
+    try {
+      await writeContractAsync({
+        abi: pokemonCardAbi,
+        address: POKEMON_CARD_ADDRESS,
+        functionName: 'pause',
+      });
+      setPauseContractStatus('Pausing PokemonCard contract: Transaction submitted...');
+    } catch (e: any) {
+      setPauseContractStatus(`Pausing PokemonCard contract failed: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null });
+    }
+  };
+
+  const handleUnpauseContract = async () => {
+    if (!POKEMON_CARD_ADDRESS || !account.address || !contractOwner || account.address.toLowerCase() !== contractOwner.toLowerCase()) {
+      alert("This action can only be performed by the contract owner.");
+      return;
+    }
+    if (!isContractPaused) {
+      alert("PokemonCard contract is not paused.");
+      return;
+    }
+    setCurrentActionInfo({ type: 'unpauseContract', details: 'Unpausing PokemonCard contract' });
+    try {
+      await writeContractAsync({
+        abi: pokemonCardAbi,
+        address: POKEMON_CARD_ADDRESS,
+        functionName: 'unpause',
+      });
+      setPauseContractStatus('Unpausing PokemonCard contract: Transaction submitted...');
+    } catch (e: any) {
+      setPauseContractStatus(`Unpausing PokemonCard contract failed: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null });
+    }
+  };
 
 
 
@@ -2733,6 +2811,10 @@ function App() {
         logs.forEach(log => {
           const args = log.args as { minter?: `0x${string}` };
           console.log(`[Event Watcher] MinterSetTrue for ${args.minter}`);
+          // If the event is for the current user, refresh their specific minter status
+          if (account.address && args.minter?.toLowerCase() === account.address.toLowerCase()) {
+            if (refetchMinterStatusForUser) refetchMinterStatusForUser();
+          }
           setRefreshMintersTrigger(prev => prev + 1); // Refresh minters list
         });
       }
@@ -2747,7 +2829,41 @@ function App() {
         logs.forEach(log => {
           const args = log.args as { minter?: `0x${string}` };
           console.log(`[Event Watcher] MinterSetFalse for ${args.minter}`);
+          // If the event is for the current user, refresh their specific minter status
+          if (account.address && args.minter?.toLowerCase() === account.address.toLowerCase()) {
+            if (refetchMinterStatusForUser) refetchMinterStatusForUser();
+          }
           setRefreshMintersTrigger(prev => prev + 1); // Refresh minters list
+        });
+      }
+    });
+
+    // Watch for PokemonCard Paused and Unpaused events
+    useWatchContractEvent({
+      address: POKEMON_CARD_ADDRESS,
+      abi: pokemonCardAbi,
+      eventName: 'Paused',
+      enabled: !!POKEMON_CARD_ADDRESS,
+      onLogs(logs) {
+        logs.forEach(log => {
+          console.log('[Event Watcher] PokemonCard Paused event:', log.args);
+          if (refetchPausedStatus) refetchPausedStatus();
+          // Optionally, provide immediate feedback if desired, though refetch is safer
+          // setIsContractPaused(true);
+          // setPauseContractStatus('PokemonCard contract has been paused (event received).');
+        });
+      }
+    });
+
+    useWatchContractEvent({
+      address: POKEMON_CARD_ADDRESS,
+      abi: pokemonCardAbi,
+      eventName: 'Unpaused',
+      enabled: !!POKEMON_CARD_ADDRESS,
+      onLogs(logs) {
+        logs.forEach(log => {
+          console.log('[Event Watcher] PokemonCard Unpaused event:', log.args);
+          if (refetchPausedStatus) refetchPausedStatus();
         });
       }
     });
@@ -3009,6 +3125,7 @@ function App() {
         successMessage = `✅ Mint successful! (${actionDetails || ''})`;
         setMintStatus(successMessage);
         refetchBalance(); // Refetch user's balance of NFTs
+        if (refetchTotalSupply) refetchTotalSupply(); // Refetch total supply
         if (refetchNextTokenId) refetchNextTokenId(); // Refetch next token ID for next mint
       } else if (actionType === 'approve' && actionTokenId) {
         successMessage = `✅ Token ${actionTokenId} approved!`;
@@ -3029,6 +3146,7 @@ function App() {
         successMessage = `✅ Token ${actionTokenId} burned successfully!`;
         setBurnStatus(successMessage);
         refetchBalance(); // Refresh user's NFT list
+        if (refetchTotalSupply) refetchTotalSupply(); // Refetch total supply
         if (listTokenId === actionTokenId) {
           setListTokenId(''); // Clear selection if burned token was selected for listing
         }
@@ -3069,6 +3187,15 @@ function App() {
         if (refetchPendingWithdrawals) refetchPendingWithdrawals();
         if (refetchMinterStatusForUser) refetchMinterStatusForUser(); // In case owner status changed something relevant
         refetchBalance(); // User's ETH balance will change
+      } else if (actionType === 'pauseContract') {
+        successMessage = `✅ PokemonCard contract paused successfully!`;
+        setPauseContractStatus(successMessage);
+        if (refetchPausedStatus) refetchPausedStatus();
+      } else if (actionType === 'unpauseContract') {
+        successMessage = `✅ PokemonCard contract unpaused successfully!`;
+        setPauseContractStatus(successMessage);
+        if (refetchPausedStatus) refetchPausedStatus();
+        refetchBalance(); // User's ETH balance will change
       }
       setCurrentActionInfo({ type: null }); // Reset action info
       if (resetWriteContract) resetWriteContract(); // Reset wagmi write hook state for all confirmed TXs
@@ -3087,6 +3214,7 @@ function App() {
         if (setMinterStatus.includes('✅')) setSetMinterStatus('');
         if (endAuctionStatus.includes('✅')) setEndAuctionStatus('');
         if (withdrawStatus.includes('✅')) setWithdrawStatus('');
+        if (pauseContractStatus.includes('✅')) setPauseContractStatus('');
       }, 4000);
       return () => clearTimeout(timer);
 
@@ -3135,6 +3263,12 @@ function App() {
       } else if (actionType === 'withdraw') {
         userFacingError = `⚠️ Withdrawal failed (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
         setWithdrawStatus(userFacingError);
+      } else if (actionType === 'pauseContract') {
+        userFacingError = `⚠️ Pausing PokemonCard contract failed: ${confirmationError.shortMessage || confirmationError.message}`;
+        setPauseContractStatus(userFacingError);
+      } else if (actionType === 'unpauseContract') {
+        userFacingError = `⚠️ Unpausing PokemonCard contract failed: ${confirmationError.shortMessage || confirmationError.message}`;
+        setPauseContractStatus(userFacingError);
         // Don't clear pending amount here, as the withdrawal failed. It might still be there.
       }
       setCurrentActionInfo({ type: null }); // Reset action info
@@ -3155,23 +3289,31 @@ function App() {
         if (endAuctionStatus.includes('⚠️')) setEndAuctionStatus('');
         if (setMinterStatus.includes('⚠️')) setSetMinterStatus('');
         if (withdrawStatus.includes('⚠️')) setWithdrawStatus('');
- 
+        if (pauseContractStatus.includes('⚠️')) setPauseContractStatus('');
       }, 7000);
       return () => clearTimeout(errorTimer);
     }
   }, [
     isConfirmed, receipt, confirmationError, currentActionInfo,
-    refetchBalance, refetchApprovalStatus, refetchNextTokenId, resetWriteContract, refetchPendingWithdrawals, refetchMinterStatusForUser,
+    refetchBalance, refetchApprovalStatus, refetchNextTokenId, resetWriteContract, refetchPendingWithdrawals, refetchMinterStatusForUser, refetchTotalSupply, refetchPausedStatus,
     listTokenId, setListTokenId,
     setRefreshMarketplaceTrigger, setRefreshAuctionsTrigger, setRefreshMintersTrigger,
-    setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, setWithdrawStatus,
-    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, setSetMinterStatus,
-    mintStatus, approveStatus, listStatus, buyStatus, burnStatus,
-    cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus, setMinterStatus, withdrawStatus
+    setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, setWithdrawStatus, setPauseContractStatus,
+    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, setSetMinterStatus, 
+    mintStatus, approveStatus, listStatus, buyStatus, burnStatus, withdrawStatus, pauseContractStatus,
+    cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus, setMinterStatus
   ]);  
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}> {/* Centered content */}
         <AccountConnect />
+
+        {/* Contract Paused Banner - Visible to all users if contract is paused */}
+        {account.status === 'connected' && currentNetworkConfig && !isLoadingPausedStatus && isContractPaused && (
+          <div className="contract-paused-banner">
+            <p>⚠️ The PokemonCard contract is currently PAUSED. Some actions like minting, approving, and transferring NFTs may be temporarily unavailable. ⚠️</p>
+          </div>
+        )}
+
 
         {account.status === 'connected' && currentNetworkConfig && (
           <>
@@ -3502,6 +3644,13 @@ function App() {
                 <p style={{color: '#1a237e'}}>Contract Owner: <strong style={{color: '#0d47a1'}}>{contractOwner}</strong></p>
                 <p><small style={{color: '#555'}}>This panel is exclusively for you, the contract owner.</small></p>
 
+                <div style={{ marginTop: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border-color-dark)' }}>
+                  <h4>Contract Stats</h4>
+                  {isLoadingTotalSupply && <p>Loading total NFT supply...</p>}
+                  {totalNftSupply !== null && !isLoadingTotalSupply && <p>Total NFTs in Circulation: <strong>{totalNftSupply.toString()}</strong></p>}
+                  <button onClick={() => refetchTotalSupply()} disabled={isLoadingTotalSupply}>Refresh Stats</button>
+                </div>
+
                 <div style={{ marginTop: '15px' }}>
                   <h4>Manage Minter Addresses</h4>
                   <input
@@ -3529,6 +3678,29 @@ function App() {
                     <ul style={{ listStyleType: 'disc', paddingLeft: '20px' }}>{currentMinters.map(minter => <li key={minter}><small style={{fontFamily: 'monospace'}}>{minter}</small></li>)}</ul>
                   )}
                   <button onClick={() => setRefreshMintersTrigger(p => p + 1)} disabled={isLoadingMinters} style={{ marginTop: '10px' }}>Refresh Minters List</button>
+                </div>
+
+                <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid var(--border-color-dark)' }}>
+                  <h4>Contract Paused State (PokemonCard)</h4>
+                  {isLoadingPausedStatus && <p>Loading paused status...</p>}
+                  {!isLoadingPausedStatus && (
+                    <p>Currently: <strong>{isContractPaused ? 'PAUSED' : 'ACTIVE (Not Paused)'}</strong></p>
+                  )}
+                  <button
+                    onClick={handlePauseContract}
+                    disabled={isContractPaused || isLoadingPausedStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'pauseContract')}
+                    style={{ backgroundColor: '#ffc107', marginRight: '10px', color: 'black' }} // Yellow for pause
+                  >
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'pauseContract') ? 'Pausing...' : 'Pause Contract'}
+                  </button>
+                  <button
+                    onClick={handleUnpauseContract}
+                    disabled={!isContractPaused || isLoadingPausedStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'unpauseContract')}
+                    style={{ backgroundColor: '#17a2b8' }} // Teal for unpause
+                  >
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'unpauseContract') ? 'Unpausing...' : 'Unpause Contract'}
+                  </button>
+                  {pauseContractStatus && <p><small style={{color: pauseContractStatus.includes('✅') ? 'green' : (pauseContractStatus.includes('⚠️') ? 'red' : '#333')}}>{pauseContractStatus}</small></p>}
                 </div>
               </div>
             )}
