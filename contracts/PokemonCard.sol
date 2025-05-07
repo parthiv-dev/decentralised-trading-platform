@@ -24,18 +24,6 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         string imageURI;
     }
 
-    // NEW: Struct to hold Pokemon card details
-    struct Pokemon {
-        uint256 tokenId;
-        uint256 hp;
-        string name;
-        uint256 level;
-        uint256 attack;
-        uint256 defense;
-        uint256 speed;
-        string imageURI;
-    }
-
     constructor(address initialOwner)
         ERC721("PokemonCard", "PKMN")
         Ownable(initialOwner)
@@ -88,7 +76,6 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
     function safeMint(address to, string memory uri)
         public
         onlyAuthorized
-        onlyAuthorized
         returns (uint256)
     {
         uint256 tokenId = _nextTokenId++;
@@ -105,22 +92,8 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
             imageURI: ""
         });
         _pokemons[tokenId] = pkmn; // NEW: Store the Pokemon struct in the mapping
-
-        // NEW: Create a Pokemon memory struct and assign values
-        Pokemon memory pkmn = Pokemon({
-            tokenId: tokenId,
-            hp: 100,
-            name: "PokemonName", // @Matteo: How do we get the name?
-            level: 1,
-            attack: 25,
-            defense: 78,
-            speed: 100,
-            imageURI: ""
-        });
-        _pokemons[tokenId] = pkmn; // NEW: Store the Pokemon struct in the mapping
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, uri);
-        emit PokemonMinted(msg.sender, tokenId); // NEW: Emit event for minting
         emit PokemonMinted(msg.sender, tokenId); // NEW: Emit event for minting
         return tokenId;
     }
