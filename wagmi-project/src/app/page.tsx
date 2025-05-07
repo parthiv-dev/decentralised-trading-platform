@@ -2306,7 +2306,7 @@ function App() {
       alert("Please connect your wallet and ensure contract addresses are available.");
       return;
     }
-    setCurrentActionInfo({ type: 'buy', tokenId: listingId }); // Using tokenId to store listingId here
+    setCurrentActionInfo({ type: 'buy', tokenId: listingId });
     try {
       await writeContractAsync({
         abi: tradingPlatformAbi,
@@ -2317,54 +2317,9 @@ function App() {
       });
       // If writeContractAsync is successful, the useEffect for confirmation will handle status updates.
     } catch (e: any) {
-      console.error(`Full error in handleBuyItem for listing ${listingId}:`, e); // Log the full error object
-
-      let detailedMessage = e.shortMessage || e.message || "Unknown error during buy transaction.";
-
-      // Attempt to extract more specific revert reasons from the error object (common viem/wagmi patterns)
-      const cause = e.cause;
-      if (cause && typeof cause === 'object') {
-        detailedMessage += ` | Cause Message: ${cause.shortMessage || cause.message || "No specific cause message."}`;
-
-        if ('data' in cause && cause.data && typeof cause.data === 'string' && cause.data.startsWith('0x')) {
-          const revertData = cause.data as `0x${string}`;
-          let decoded = false;
-
-          // Try decoding with TradingPlatform ABI (for its custom errors)
-          try {
-            const decodedError = decodeErrorResult({ abi: tradingPlatformAbi, data: revertData });
-            detailedMessage += ` | TP Revert: ${decodedError.errorName}(${decodedError.args?.join(', ') || ''})`;
-            decoded = true;
-          } catch { /* ignore if not decodable with this ABI */ }
-
-          // If not decoded, try with PokemonCard ABI (for errors from transferFrom)
-          if (!decoded) {
-            try {
-              const decodedError = decodeErrorResult({ abi: pokemonCardAbi, data: revertData });
-              detailedMessage += ` | PC Revert: ${decodedError.errorName}(${decodedError.args?.join(', ') || ''})`;
-              decoded = true;
-            } catch { /* ignore */ }
-          }
-
-          // If still not decoded, try generic Error(string)
-          if (!decoded && revertData.startsWith('0x08c379a0')) { // Error(string) selector
-            try {
-              const errorStringAbi = [{ type: 'error', name: 'Error', inputs: [{ type: 'string', name: 'message' }] }] as const;
-              const reason = decodeErrorResult({ abi: errorStringAbi, data: revertData });
-              detailedMessage += ` | Decoded String Revert: ${reason.args[0]}`;
-              decoded = true;
-            } catch { /* ignore */ }
-          }
-
-          if (!decoded) {
-            detailedMessage += ` | Raw Revert Data: ${revertData}`;
-          }
-        } else if ('reason' in cause && typeof cause.reason === 'string' && cause.reason) {
-            detailedMessage += ` | Cause Revert Reason: ${cause.reason}`;
-        }
-      }
-      setBuyStatus(`Buy failed for item ${listingId}: ${detailedMessage}`);
-      setCurrentActionInfo({ type: null });
+      setBuyStatus(`Buy failed for item ${listingId}: ${e.shortMessage || e.message}`);
+      console.error(`Error in handleBuyItem for listing ${listingId}:`, e);
+      setCurrentActionInfo({ type: null }); // Reset action on direct failure
     }
   };
 
@@ -2545,13 +2500,13 @@ function App() {
 
   // Effect to handle transaction confirmation feedback and refetch data
   useEffect(() => {
-    if (isConfirmed && receipt && currentActionInfo.type) {
-      const actionType = currentActionInfo.type;
-      const actionTokenId = currentActionInfo.tokenId;
-      const actionDetails = currentActionInfo.details;
+    // Define these here to be available for both success and error paths if currentActionInfo.type is true
+    const actionType = currentActionInfo.type;
+    const actionTokenId = currentActionInfo.tokenId;
+    const actionDetails = currentActionInfo.details;
 
-      let successMessage = '';
-
+    if (isConfirmed && receipt) {
+      let successMessage = ''; // This line was missing
       if (actionType === 'mint') {
         successMessage = `✅ Mint successful! (${actionDetails || ''})`;
         setMintStatus(successMessage);
@@ -2567,11 +2522,11 @@ function App() {
         refetchApprovalStatus();
         refetchBalance();
         setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
-      } else if (actionType === 'buy' && actionTokenId) { // actionTokenId is listingId here
+      } else if (actionType === 'buy' && actionTokenId) {
         successMessage = `✅ Item (Listing ID: ${actionTokenId}) bought successfully!`;
-        setBuyStatus(successMessage);
-        setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
-        refetchBalance(); // Buyer's NFT balance and ETH balance changed
+        setBuyStatus(successMessage); // Keep specific status for UI
+        setRefreshMarketplaceTrigger(prev => prev + 1);
+        refetchBalance();
       } else if (actionType === 'burn' && actionTokenId) {
         successMessage = `✅ Token ${actionTokenId} burned successfully!`;
         setBurnStatus(successMessage);
@@ -2580,26 +2535,23 @@ function App() {
           setListTokenId(''); // Clear selection if burned token was selected for listing
         }
       }
-
       setCurrentActionInfo({ type: null }); // Reset action info
-      resetWriteContract(); // Reset wagmi write hook state
+      if (resetWriteContract) resetWriteContract(); // Reset wagmi write hook state for all confirmed TXs
 
       const timer = setTimeout(() => {
-        if (actionType === 'mint' && mintStatus.includes('successful')) setMintStatus('');
-        if (actionType === 'approve' && approveStatus.includes('approved')) setApproveStatus('');
-        if (actionType === 'list' && listStatus.includes('listed')) setListStatus('');
-        if (actionType === 'buy' && buyStatus.includes('successful')) setBuyStatus('');
-        if (actionType === 'burn' && burnStatus.includes('successfully')) setBurnStatus('');
+        // Clear status messages
+        if (mintStatus.includes('✅')) setMintStatus('');
+        if (approveStatus.includes('✅')) setApproveStatus('');
+        if (listStatus.includes('✅')) setListStatus('');
+        if (buyStatus.includes('✅')) setBuyStatus('');
+        if (burnStatus.includes('✅')) setBurnStatus('');
       }, 4000);
       return () => clearTimeout(timer);
 
-    } else if (confirmationError && currentActionInfo.type) {
-      const actionType = currentActionInfo.type;
-      const actionTokenId = currentActionInfo.tokenId;
-      const actionDetails = currentActionInfo.details;
-
-      const baseErrorMsg = `⚠️ Transaction failed`;
-      const specificErrorMsg = `${baseErrorMsg}: ${confirmationError.shortMessage || confirmationError.message}`;
+    } else if (confirmationError) {
+      const specificErrorMsg = `⚠️ Transaction failed: ${confirmationError.shortMessage || confirmationError.message}`;
+      // Use currentActionInfo to determine which action failed
+      if (actionType) {
       let userFacingError = specificErrorMsg;
 
       if (actionType === 'mint') {
@@ -2614,21 +2566,22 @@ function App() {
         setListStatus(userFacingError);
       } else if (actionType === 'buy' && actionTokenId) {
         userFacingError = `⚠️ Buying item (Listing ID: ${actionTokenId}) failed: ${confirmationError.shortMessage || confirmationError.message}`;
-        setBuyStatus(userFacingError);
+        setBuyStatus(userFacingError); // Keep specific status for UI
       } else if (actionType === 'burn' && actionTokenId) {
         userFacingError = `⚠️ Burning token ${actionTokenId} failed: ${confirmationError.shortMessage || confirmationError.message}`;
         setBurnStatus(userFacingError);
       }
-
       setCurrentActionInfo({ type: null }); // Reset action info
-      resetWriteContract(); // Reset wagmi write hook state
+      }
+      if (resetWriteContract) resetWriteContract();
 
       const errorTimer = setTimeout(() => {
-        if (actionType === 'mint' && mintStatus.includes('failed')) setMintStatus('');
-        if (actionType === 'approve' && approveStatus.includes('failed')) setApproveStatus('');
-        if (actionType === 'list' && listStatus.includes('failed')) setListStatus('');
-        if (actionType === 'buy' && buyStatus.includes('failed')) setBuyStatus('');
-        if (actionType === 'burn' && burnStatus.includes('failed')) setBurnStatus('');
+        // Clear error messages
+        if (mintStatus.includes('⚠️')) setMintStatus('');
+        if (approveStatus.includes('⚠️')) setApproveStatus('');
+        if (listStatus.includes('⚠️')) setListStatus('');
+        if (buyStatus.includes('⚠️')) setBuyStatus('');
+        if (burnStatus.includes('⚠️')) setBurnStatus('');
       }, 7000);
       return () => clearTimeout(errorTimer);
     }
@@ -2784,12 +2737,12 @@ function App() {
                           disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId)}
                         >
                           {((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId) ? (isConfirming ? 'Confirming Buy...' : 'Sending...') :
-                           (buyStatus.includes(item.listingId) && buyStatus.includes('failed')) ? 'Buy Failed - Retry?' : // This part of buyStatus logic might need refinement
+                           (buyStatus.includes(item.listingId) && buyStatus.includes('failed')) ? 'Buy Failed - Retry?' :
                            'Buy Now'}
                         </button>
                       )}
                       {/* Display final buy status for this specific item */}
-                      {buyStatus && buyStatus.includes(item.listingId) && (buyStatus.includes('successful') || buyStatus.includes('failed')) && <p><small>{buyStatus.replace(`(Listing ID: ${item.listingId})`, 'this item')}</small></p>}
+                      {buyStatus && buyStatus.includes(item.listingId) && (buyStatus.includes('✅') || buyStatus.includes('⚠️')) && <p><small>{buyStatus.replace(`item ${item.listingId}`, 'this item')}</small></p>}
                     </div>
                   ))}
                 </div>
