@@ -40,7 +40,7 @@ TODO for 1. Overview:
 - Web3 technologies integration
 - Completed function trading platform deployed on local testnet
 
-In this project, we developed a decentralised application (dApp) for trading Pokémon cards.  The project integrates blockchain technology with NFT concepts, requiring implementation of smart contracts, frontend development, and Web3 technologies integration. We deliver a complete, functional trading platform deployed on a local testnet. 
+In this project, we developed a decentralised application (dApp) for trading Pokémon cards. The project integrates **blockchain technology** with **NFT concepts**, requiring implementation of [smart contracts](#smart-contracts), [frontend development](#frontend-development), and Web3 technologies integration. We deliver a complete, functional trading platform deployed on a local testnet. 
 
 In this [README](README.md) we explain what our project does, how to use it and what the purpose of individual files are (the essential part of every README). 
 
@@ -82,11 +82,26 @@ TODO for 3.1. Smart Contracts:
 - Simplicity
 
 We implment two Solidity contracts:
-- [PokemonCard.sol](contracts\PokemonCard.sol)
--  [TradingPlatform.sol](contracts\TradingPlatform.sol)
+- [PokemonCard.sol](contracts\PokemonCard.sol): To **securly mint** Pokemon NFTs and store comprehensive **metadata** for pokemon characteristics
+-  [TradingPlatform.sol](contracts\TradingPlatform.sol):
 
-[PokemonCard.sol](contracts\PokemonCard.sol) follows the ERC721 standard of OpenZeppelin
+#### PokemonCard Contract
 
+[PokemonCard.sol](contracts\PokemonCard.sol) is based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition we used following extensions:
+
+
+- [ERC721Burnable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Burnable): To enable token holders destroy their tokens.
+- [ERC721Enumerable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Enumerable): To be able to call the totalSupply() function
+- [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts will be able to pause the functionality marked as whenNotPaused. This is useful for emergency response.
+- [ERC721URIStorage](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721URIStorage): To allow updating token URIs for individual token IDs.
+- Ownable: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
+
+**Access control** is ensured by: 
+- the in-built Ownable (modifier)
+- an auxilary mapping which maps user addresses to bool (true = allowed to mint; false = not allowed to mint)
+- a modifier onlyAuthorized which check if either of the above is true for a given user
+
+#### TradingPlatform Contract
 
 [TradingPlatform.sol](contracts\TradingPlatform.sol) incoporates [PokemonCard.sol](contracts\PokemonCard.sol) in the sense that one first deploys [PokemonCard.sol](contracts\PokemonCard.sol), receives its contract address and then calls (the constructor of) [TradingPlatform.sol](contracts\TradingPlatform.sol), giving the contract address of [PokemonCard.sol](contracts\PokemonCard.sol) as an input. Furthermore, [TradingPlatform.sol](contracts\TradingPlatform.sol) calls several functions of [PokemonCard.sol](contracts\PokemonCard.sol) in its own functions. 
 
@@ -170,7 +185,11 @@ of design patterns
 - follow [Official Solidity style guide](https://soliditylang.org/)
 - Proper error handling throughout codebase
 
-We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from [OpenZeppelins]()
+We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from OpenZeppelin's way of commenting e.g. [here]() (TODO).
+
+
+
+
 
 ## Conclusion
 
