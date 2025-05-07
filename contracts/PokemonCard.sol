@@ -21,7 +21,7 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         uint256 attack;
         uint256 defense;
         uint256 speed;
-        // string imageURI; // Not needed if image is from IPFS
+        string imageURI; // Not needed if image is from IPFS
     }
 
     constructor(address initialOwner)
