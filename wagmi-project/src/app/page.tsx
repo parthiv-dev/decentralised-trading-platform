@@ -1744,6 +1744,7 @@ function App() {
   const [mintStatus, setMintStatus] = useState('');
   const [approveStatus, setApproveStatus] = useState('');
   const [listStatus, setListStatus] = useState('');
+  const [burnStatus, setBurnStatus] = useState('');
   const [isLoadingTokenIds, setIsLoadingTokenIds] = useState(false);
   const [fetchTokenIdsError, setFetchTokenIdsError] = useState<string | null>(null);
   const publicClient = usePublicClient();
@@ -1958,6 +1959,26 @@ function App() {
     }
   };
 
+  const handleBurn = async (tokenIdToBurn: string) => {
+    if (!POKEMON_CARD_ADDRESS || !account.address) {
+      alert("Please connect your wallet and ensure contract addresses are available.");
+      return;
+    }
+    setBurnStatus(`Burning token ${tokenIdToBurn}...`);
+    try {
+      await writeContractAsync({
+        abi: pokemonCardAbi,
+        address: POKEMON_CARD_ADDRESS,
+        functionName: 'burn',
+        args: [BigInt(tokenIdToBurn)],
+      });
+    } catch (e: any) {
+      setBurnStatus(`Burn failed for token ${tokenIdToBurn}: ${e.shortMessage || e.message}`);
+      console.error(e);
+    }
+  };
+
+
  // Watch for ItemSold events to notify the seller
  useWatchContractEvent({
   address: TRADING_PLATFORM_ADDRESS,
@@ -2126,12 +2147,18 @@ function App() {
         setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
         refetchBalance(); // Buyer's NFT balance and ETH balance changed
       }
+      if (burnStatus.includes('Burning')) {
+        setBurnStatus(`✅ Token burned successfully!`);
+        refetchBalance(); // Refresh user's NFT list
+        // If the burned token was selected for listing, clear it
+      }
       // Reset generic statuses after a short delay
       setTimeout(() => {
         if (mintStatus.includes('successful')) setMintStatus('');
         if (approveStatus.includes('approved')) setApproveStatus('');
         if (listStatus.includes('listed')) setListStatus('');
         if (buyStatus.includes('successful')) setBuyStatus('');
+        if (burnStatus.includes('successfully')) setBurnStatus('');
       }, 4000);
     } else if (confirmationError) {
         const errorMsg = `⚠️ Transaction failed: ${confirmationError.shortMessage || confirmationError.message}`;
@@ -2139,6 +2166,7 @@ function App() {
         if (approveStatus.includes('Approving')) setApproveStatus(errorMsg);
         if (listStatus.includes('Listing')) setListStatus(errorMsg);
         if (buyStatus.includes('Buying')) setBuyStatus(errorMsg);
+        if (burnStatus.includes('Burning')) setBurnStatus(errorMsg);
 
         // Clear error messages after a longer delay
         setTimeout(() => {
@@ -2146,14 +2174,15 @@ function App() {
           if (approveStatus.includes('failed')) setApproveStatus('');
           if (listStatus.includes('failed')) setListStatus('');
           if (buyStatus.includes('failed')) setBuyStatus('');
+          if (burnStatus.includes('failed')) setBurnStatus('');
         }, 7000);
     }
   // Dependencies for reacting to transaction state changes.
   // Status messages (mintStatus, etc.) are set inside, so they are not dependencies here.
   // `listTokenId` is included because it's used in status messages.
   // `refetchBalance` and `refetchApprovalStatus` are stable functions from wagmi hooks.
-  // The actual status strings (mintStatus, etc.) are included to ensure the effect re-evaluates if a similar action is retried while a previous status message is still displayed.
-  }, [isConfirmed, receipt, confirmationError, listTokenId, refetchBalance, refetchApprovalStatus, mintStatus, approveStatus, listStatus, buyStatus]);
+  // The actual status strings are included to ensure the effect re-evaluates if a similar action is retried.
+  }, [isConfirmed, receipt, confirmationError, listTokenId, refetchBalance, refetchApprovalStatus, mintStatus, approveStatus, listStatus, buyStatus, burnStatus]);
 
   return (
     <>
@@ -2218,7 +2247,20 @@ function App() {
               {!isLoadingBalance && !isLoadingTokenIds && !fetchTokenIdsError && userPokemonIds.length > 0 ? (
                 <>
                   <p>IDs: {userPokemonIds.join(', ')} (Balance: {pokemonBalance?.toString()})</p>
-                  <h4>List a Card for Sale</h4>
+                  <div>
+                    {userPokemonIds.map(id => (
+                      <button
+                        key={`burn-${id}`}
+                        onClick={() => handleBurn(id)}
+                        disabled={isWritePending || isConfirming || (burnStatus.includes('Burning') && burnStatus.includes(id))}
+                        style={{ marginRight: '5px', marginBottom: '5px' }}
+                      >
+                        { (isWritePending && burnStatus.includes(id)) ? 'Sending...' : (isConfirming && burnStatus.includes(id)) ? 'Confirming Burn...' : `Burn Token ${id}` }
+                      </button>
+                    ))}
+                    {burnStatus && <p><small>{burnStatus}</small></p>}
+                  </div>
+                  <h4 style={{marginTop: '15px'}}>List a Card for Sale</h4>
                   <label htmlFor="token-select">Token ID: </label>
                   <select id="token-select" value={listTokenId} onChange={(e) => setListTokenId(e.target.value)}>
                     {userPokemonIds.map(id => <option key={id} value={id}>{id}</option>)}
