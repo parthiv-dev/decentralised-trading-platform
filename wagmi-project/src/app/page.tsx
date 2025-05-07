@@ -1960,6 +1960,24 @@ function App() {
   const [listTokenId, setListTokenId] = useState('');
   const [listPrice, setListPrice] = useState('');
   const [isTokenApproved, setIsTokenApproved] = useState(false);
+  const [cancelListingStatus, setCancelListingStatus] = useState('');
+
+  // Auction State
+  interface AuctionItem {
+    auctionId: string; seller: `0x${string}`; tokenId: string; pokemonData?: DisplayPokemonData;
+    startingPrice: string; startingPriceInWei: bigint;
+    endTime: number; // Unix timestamp
+    highestBidder: `0x${string}`; highestBid: string; highestBidInWei: bigint;
+    active: boolean; ended: boolean;
+  }
+  const [activeAuctions, setActiveAuctions] = useState<AuctionItem[]>([]);
+  const [isLoadingAuctions, setIsLoadingAuctions] = useState(false);
+  const [auctionsError, setAuctionsError] = useState<string | null>(null);
+  const [createAuctionTokenId, setCreateAuctionTokenId] = useState('');
+  const [createAuctionStartingPrice, setCreateAuctionStartingPrice] = useState('');
+  const [createAuctionDurationMinutes, setCreateAuctionDurationMinutes] = useState('');
+  const [bidInputs, setBidInputs] = useState<{[auctionId: string]: string}>({}); // For bid amounts per auction
+  const [refreshAuctionsTrigger, setRefreshAuctionsTrigger] = useState(0);
 
   // State for minting status
   const [mintStatus, setMintStatus] = useState('');
@@ -1998,6 +2016,11 @@ function App() {
   const [isLoadingMarketplace, setIsLoadingMarketplace] = useState(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
   const [buyStatus, setBuyStatus] = useState('');
+  // Status messages for auction actions
+  const [createAuctionStatus, setCreateAuctionStatus] = useState('');
+  const [bidStatus, setBidStatus] = useState('');
+  const [cancelAuctionStatus, setCancelAuctionStatus] = useState('');
+  const [endAuctionStatus, setEndAuctionStatus] = useState('');
   const [refreshMarketplaceTrigger, setRefreshMarketplaceTrigger] = useState(0);
 
   // Determine current network's contract addresses
@@ -2301,6 +2324,26 @@ function App() {
     }
   };
 
+  const handleCancelListing = async (listingId: string) => {
+    if (!TRADING_PLATFORM_ADDRESS) {
+      alert("Trading platform address not found. Ensure you are on a supported network.");
+      return;
+    }
+    setCurrentActionInfo({ type: 'cancelListing', details: `Listing ID: ${listingId}` });
+    try {
+      await writeContractAsync({
+        abi: tradingPlatformAbi,
+        address: TRADING_PLATFORM_ADDRESS,
+        functionName: 'cancelListing',
+        args: [BigInt(listingId)],
+      });
+      setCancelListingStatus(`Cancelling listing ${listingId}: Transaction submitted...`);
+    } catch (e: any) {
+      setCancelListingStatus(`Cancel listing failed: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null });
+    }
+  };
+
   const handleBuyItem = async (listingId: string, priceInWei: bigint) => {
     if (!TRADING_PLATFORM_ADDRESS || !account.address) {
       alert("Please connect your wallet and ensure contract addresses are available.");
@@ -2343,13 +2386,115 @@ function App() {
     }
   };
 
+  const handleCreateAuction = async () => {
+    if (!TRADING_PLATFORM_ADDRESS || !POKEMON_CARD_ADDRESS || !createAuctionTokenId || !createAuctionStartingPrice || !createAuctionDurationMinutes || !isTokenApproved) {
+      alert("Ensure token is selected for auction, starting price and duration are set, and token is approved for the marketplace.");
+      return;
+    }
+    // Note: Approval check for createAuctionTokenId should be similar to listTokenId
+    // For simplicity, we assume `isTokenApproved` (which checks `listTokenId`) is sufficient if `createAuctionTokenId === listTokenId`.
+    // A more robust solution would check approval specifically for `createAuctionTokenId`.
+    // We will rely on the `approve` button for the selected `listTokenId` to also cover auction creation if the same token is used.
 
- // Watch for ItemSold events to notify the seller
+    setCurrentActionInfo({ type: 'createAuction', tokenId: createAuctionTokenId, details: `Price: ${createAuctionStartingPrice} ETH, Duration: ${createAuctionDurationMinutes} min` });
+    try {
+      const priceInWei = parseEther(createAuctionStartingPrice);
+      const durationInSeconds = BigInt(parseInt(createAuctionDurationMinutes, 10) * 60);
+      if (durationInSeconds <= 0) {
+        alert("Auction duration must be positive.");
+        setCurrentActionInfo({ type: null });
+        return;
+      }
+
+      await writeContractAsync({
+        abi: tradingPlatformAbi,
+        address: TRADING_PLATFORM_ADDRESS,
+        functionName: 'createAuction',
+        args: [BigInt(createAuctionTokenId), priceInWei, durationInSeconds],
+      });
+      setCreateAuctionStatus(`Creating auction for token ${createAuctionTokenId}: Transaction submitted...`);
+    } catch (e: any) {
+      setCreateAuctionStatus(`Auction creation failed: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null });
+    }
+  };
+
+  const handleBid = async (auctionId: string) => {
+    if (!TRADING_PLATFORM_ADDRESS || !account.address) {
+      alert("Connect wallet and ensure contract addresses are available.");
+      return;
+    }
+    const bidAmountString = bidInputs[auctionId];
+    if (!bidAmountString || parseFloat(bidAmountString) <= 0) {
+      alert("Please enter a valid bid amount.");
+      return;
+    }
+    setCurrentActionInfo({ type: 'bid', details: `Auction ID: ${auctionId}, Amount: ${bidAmountString} ETH` });
+    try {
+      const bidValueWei = parseEther(bidAmountString);
+      await writeContractAsync({
+        abi: tradingPlatformAbi,
+        address: TRADING_PLATFORM_ADDRESS,
+        functionName: 'bid',
+        args: [BigInt(auctionId)],
+        value: bidValueWei,
+      });
+      setBidStatus(`Placing bid on auction ${auctionId}: Transaction submitted...`);
+    } catch (e: any) {
+      setBidStatus(`Bid failed for auction ${auctionId}: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null });
+    }
+  };
+
+  const handleCancelAuction = async (auctionId: string) => {
+    if (!TRADING_PLATFORM_ADDRESS) return;
+    setCurrentActionInfo({ type: 'cancelAuction', details: `Auction ID: ${auctionId}` });
+    try {
+      await writeContractAsync({
+        abi: tradingPlatformAbi,
+        address: TRADING_PLATFORM_ADDRESS,
+        functionName: 'cancelAuction',
+        args: [BigInt(auctionId)],
+      });
+      setCancelAuctionStatus(`Cancelling auction ${auctionId}: Transaction submitted...`);
+    } catch (e: any) {
+      setCancelAuctionStatus(`Cancel auction failed: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null });
+    }
+  };
+
+  const handleEndAuction = async (auctionId: string) => {
+    if (!TRADING_PLATFORM_ADDRESS) return;
+    setCurrentActionInfo({ type: 'endAuction', details: `Auction ID: ${auctionId}` });
+    try {
+      await writeContractAsync({
+        abi: tradingPlatformAbi,
+        address: TRADING_PLATFORM_ADDRESS,
+        functionName: 'endAuction',
+        args: [BigInt(auctionId)],
+      });
+      setEndAuctionStatus(`Ending auction ${auctionId}: Transaction submitted...`);
+    } catch (e: any) {
+      setEndAuctionStatus(`End auction failed: ${e.shortMessage || e.message}`);
+      setCurrentActionInfo({ type: null });
+    }
+  };
+
+  // Helper to update bid input state
+  const handleBidInputChange = (auctionId: string, value: string) => {
+    setBidInputs(prev => ({ ...prev, [auctionId]: value }));
+  };
+
+
+
+
+
+ // Watch for ItemSold events
  useWatchContractEvent({
   address: TRADING_PLATFORM_ADDRESS,
   abi: tradingPlatformAbi,
   eventName: 'ItemSold',
-  enabled: !!TRADING_PLATFORM_ADDRESS && !!account.address, // Only watch when relevant data is available
+  enabled: !!TRADING_PLATFORM_ADDRESS,
   onLogs(logs) {
     console.log('[Event Watcher] ItemSold logs received:', logs);
     logs.forEach(log => {
@@ -2364,23 +2509,81 @@ function App() {
 
       // Type assertion for log.args, ensure it matches your event structure
       const args = log.args as { listingId?: bigint; buyer?: `0x${string}`; seller?: `0x${string}`; tokenId?: bigint; price?: bigint };
-      if (args.seller && account.address && args.seller.toLowerCase() === account.address.toLowerCase()) {
-        // This user is the seller of the item that was just sold
-        const message = `🎉 Your item (Token ID: ${args.tokenId?.toString()}) was sold for ${args.price ? formatEther(args.price) : 'N/A'} ETH! Listing ID: ${args.listingId?.toString()}`;
-        
-        // Mark this log as processed BEFORE showing the alert
-        processedItemSoldLogIds.current.add(logId);
-        
-        alert(message); // Simple alert for now, could be a more sophisticated notification
-        console.log(message);
+      
+      console.log(`[Event Watcher] Item ${args.listingId?.toString()} (Token ID: ${args.tokenId?.toString()}) sold by ${args.seller} to ${args.buyer} for ${args.price ? formatEther(args.price) : 'N/A'} ETH.`);
+      setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace for everyone
 
-        // Optionally, trigger a refresh of data relevant to the seller
-        refetchBalance(); // Seller's ETH balance might change due to pending withdrawals
-        setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh general marketplace view
+      // If the current user is the seller or buyer, refresh their balance
+      if (account.address && (args.seller?.toLowerCase() === account.address.toLowerCase() || args.buyer?.toLowerCase() === account.address.toLowerCase())) {
+        refetchBalance(); 
+      }
+
+      // Specific notification for the seller (already existing logic, slightly adapted)
+      if (args.seller && account.address && args.seller.toLowerCase() === account.address.toLowerCase()) {
+        if (!processedItemSoldLogIds.current.has(logId)) { // Check if already processed for notification
+          const message = `🎉 Your item (Token ID: ${args.tokenId?.toString()}) was sold for ${args.price ? formatEther(args.price) : 'N/A'} ETH! Listing ID: ${args.listingId?.toString()}`;
+          processedItemSoldLogIds.current.add(logId); // Mark as processed for notification
+          alert(message); 
+          console.log(message);
+        }
       }
     });
   },
 });
+
+  // Watch for ItemListed events
+  useWatchContractEvent({
+    address: TRADING_PLATFORM_ADDRESS,
+    abi: tradingPlatformAbi,
+    eventName: 'ItemListed',
+    enabled: !!TRADING_PLATFORM_ADDRESS,
+    onLogs(logs) {
+      logs.forEach(log => {
+        const args = log.args as { listingId?: bigint; seller?: `0x${string}`; tokenId?: bigint; price?: bigint };
+        console.log(`[Event Watcher] Item ${args.listingId?.toString()} (Token ID: ${args.tokenId?.toString()}) listed by ${args.seller} for ${args.price ? formatEther(args.price) : 'N/A'} ETH.`);
+        setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
+      });
+    }
+  });
+
+  // Watch for ListingCancelled events
+  useWatchContractEvent({
+    address: TRADING_PLATFORM_ADDRESS,
+    abi: tradingPlatformAbi,
+    eventName: 'ListingCancelled',
+    enabled: !!TRADING_PLATFORM_ADDRESS,
+    onLogs(logs) {
+      logs.forEach(log => {
+        const args = log.args as { listingId?: bigint; seller?: `0x${string}`; tokenId?: bigint };
+        console.log(`[Event Watcher] Listing ${args.listingId?.toString()} cancelled by ${args.seller}`);
+        setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
+        // If the current user is the seller, refresh their balance
+        if (account.address && args.seller?.toLowerCase() === account.address.toLowerCase()) {
+          refetchBalance(); 
+        }
+      });
+    }
+  });
+
+  // Watch for Auction events
+  const auctionEventsToWatch: ('AuctionCreated' | 'BidPlaced' | 'AuctionEnded' | 'AuctionCancelled')[] = ['AuctionCreated', 'BidPlaced', 'AuctionEnded', 'AuctionCancelled'];
+  auctionEventsToWatch.forEach(eventName => {
+    useWatchContractEvent({
+      address: TRADING_PLATFORM_ADDRESS,
+      abi: tradingPlatformAbi,
+      eventName: eventName,
+      enabled: !!TRADING_PLATFORM_ADDRESS,
+      onLogs(logs) {
+        logs.forEach(log => {
+          console.log(`[Event Watcher] ${eventName} event:`, log.args);
+          setRefreshAuctionsTrigger(prev => prev + 1); // Refresh auction list
+          if (eventName === 'AuctionEnded' || eventName === 'AuctionCancelled') {
+            refetchBalance(); // Token ownership might change or token becomes available again
+          }
+        });
+      }
+    });
+  });
 
   // Effect to fetch marketplace listings
   useEffect(() => {
@@ -2486,17 +2689,97 @@ function App() {
     fetchListings();
   }, [account.status, TRADING_PLATFORM_ADDRESS, POKEMON_CARD_ADDRESS, publicClient, refreshMarketplaceTrigger]);
 
-  // Effect for auto-refreshing marketplace listings periodically
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      console.log('[Marketplace Auto-Refresh] Triggering marketplace refresh.');
-      setRefreshMarketplaceTrigger(prev => prev + 1);
-    }, 30000); // Refresh every 30 seconds
+  // // Effect for auto-refreshing marketplace listings periodically (REPLACED BY EVENT WATCHERS)
+  // useEffect(() => {
+  //   const intervalId = setInterval(() => {
+  //     console.log('[Marketplace Auto-Refresh] Triggering marketplace refresh.');
+  //     setRefreshMarketplaceTrigger(prev => prev + 1);
+  //   }, 30000); // Refresh every 30 seconds
 
-    return () => {
-      clearInterval(intervalId); // Clear interval on component unmount
+  //   return () => {
+  //     clearInterval(intervalId); // Clear interval on component unmount
+  //   };
+  // }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
+
+  // Effect to fetch active auctions
+  useEffect(() => {
+    const fetchAuctions = async () => {
+      if (!publicClient || !TRADING_PLATFORM_ADDRESS || !POKEMON_CARD_ADDRESS) {
+        setActiveAuctions([]);
+        return;
+      }
+      setIsLoadingAuctions(true);
+      setAuctionsError(null);
+      try {
+        const auctionCreatedLogs = await publicClient.getLogs({
+          address: TRADING_PLATFORM_ADDRESS,
+          event: parseAbiItem('event AuctionCreated(uint256 indexed auctionId, address indexed seller, uint256 indexed tokenId, uint256 startingPrice, uint256 endTime)'),
+          fromBlock: 0n,
+        });
+
+        if (!auctionCreatedLogs || auctionCreatedLogs.length === 0) {
+          setActiveAuctions([]);
+          setIsLoadingAuctions(false);
+          return;
+        }
+
+        const uniqueAuctionIds = [...new Set(auctionCreatedLogs.map(log => log.args.auctionId!))];
+
+        let processedAuctionDetails: Array<{ status: 'success' | 'failure', result?: ReturnType<typeof tradingPlatformAbi[0]['outputs']>, error?: Error, originalAuctionId: bigint }> = [];
+
+        if (account.chainId === 31337 && publicClient) { // Hardhat
+          for (const id of uniqueAuctionIds) {
+            try {
+              const result = await publicClient.readContract({ abi: tradingPlatformAbi, address: TRADING_PLATFORM_ADDRESS!, functionName: 'getAuction', args: [id] });
+              processedAuctionDetails.push({ status: 'success', result: result as any, originalAuctionId: id });
+            } catch (e: any) {
+              processedAuctionDetails.push({ status: 'failure', error: e, originalAuctionId: id });
+            }
+          }
+        } else if (publicClient) {
+          const auctionDetailsContracts = uniqueAuctionIds.map(id => ({ abi: tradingPlatformAbi, address: TRADING_PLATFORM_ADDRESS!, functionName: 'getAuction', args: [id] as const }));
+          const multicallResults = await publicClient.multicall({ contracts: auctionDetailsContracts, allowFailure: true });
+          processedAuctionDetails = multicallResults.map((res, index) => ({ ...res, originalAuctionId: uniqueAuctionIds[index] } as any));
+        }
+
+        const activeAuctionsData = processedAuctionDetails
+          .filter(res => res.status === 'success' && res.result && (res.result as any)[6] === true && (res.result as any)[7] === false) // result[6] is 'active', result[7] is 'ended'
+          .map(res => {
+            const auctionData = res.result as any; // seller, tokenId, startingPrice, endTime, highestBidder, highestBid, active, ended
+            return {
+              auctionId: res.originalAuctionId!.toString(),
+              seller: auctionData[0] as `0x${string}`,
+              tokenId: (auctionData[1] as bigint).toString(),
+              startingPriceInWei: auctionData[2] as bigint,
+              endTime: Number(auctionData[3] as bigint),
+              highestBidder: auctionData[4] as `0x${string}`,
+              highestBidInWei: auctionData[5] as bigint,
+              active: auctionData[6] as boolean,
+              ended: auctionData[7] as boolean,
+            };
+          });
+
+        const finalAuctionsPromises = activeAuctionsData.map(async (auction) => {
+          const pokemonData = await fetchPokemonDisplayData(auction.tokenId, publicClient, POKEMON_CARD_ADDRESS!);
+          return {
+            ...auction,
+            startingPrice: formatEther(auction.startingPriceInWei),
+            highestBid: formatEther(auction.highestBidInWei),
+            pokemonData: pokemonData || undefined,
+          };
+        });
+
+        const resolvedAuctions = (await Promise.all(finalAuctionsPromises)).filter(item => item.pokemonData);
+        setActiveAuctions(resolvedAuctions);
+      } catch (error: any) {
+        setAuctionsError(`Failed to load auctions: ${error.message}`);
+        setActiveAuctions([]);
+      } finally {
+        setIsLoadingAuctions(false);
+      }
     };
-  }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
+    fetchAuctions();
+  }, [account.status, TRADING_PLATFORM_ADDRESS, POKEMON_CARD_ADDRESS, publicClient, refreshAuctionsTrigger]);
 
   // Effect to handle transaction confirmation feedback and refetch data
   useEffect(() => {
@@ -2534,6 +2817,31 @@ function App() {
         if (listTokenId === actionTokenId) {
           setListTokenId(''); // Clear selection if burned token was selected for listing
         }
+      } else if (actionType === 'cancelListing' && actionDetails) {
+        successMessage = `✅ Listing cancelled successfully! (${actionDetails})`;
+        setCancelListingStatus(successMessage);
+        setRefreshMarketplaceTrigger(prev => prev + 1);
+        refetchBalance();
+      } else if (actionType === 'createAuction' && actionTokenId) {
+        successMessage = `✅ Auction for token ${actionTokenId} created! (${actionDetails})`;
+        setCreateAuctionStatus(successMessage);
+        setRefreshAuctionsTrigger(prev => prev + 1);
+        refetchBalance(); // User's token is now in auction
+      } else if (actionType === 'bid' && actionDetails) {
+        successMessage = `✅ Bid placed successfully! (${actionDetails})`;
+        setBidStatus(successMessage);
+        setRefreshAuctionsTrigger(prev => prev + 1);
+        // Potentially refresh user's ETH balance if wagmi doesn't do it automatically
+      } else if (actionType === 'cancelAuction' && actionDetails) {
+        successMessage = `✅ Auction cancelled successfully! (${actionDetails})`;
+        setCancelAuctionStatus(successMessage);
+        setRefreshAuctionsTrigger(prev => prev + 1);
+        refetchBalance(); // Token returns to owner's control
+      } else if (actionType === 'endAuction' && actionDetails) {
+        successMessage = `✅ Auction ended successfully! (${actionDetails})`;
+        setEndAuctionStatus(successMessage);
+        setRefreshAuctionsTrigger(prev => prev + 1);
+        refetchBalance(); // Ownership might change, or funds become withdrawable
       }
       setCurrentActionInfo({ type: null }); // Reset action info
       if (resetWriteContract) resetWriteContract(); // Reset wagmi write hook state for all confirmed TXs
@@ -2545,6 +2853,11 @@ function App() {
         if (listStatus.includes('✅')) setListStatus('');
         if (buyStatus.includes('✅')) setBuyStatus('');
         if (burnStatus.includes('✅')) setBurnStatus('');
+        if (cancelListingStatus.includes('✅')) setCancelListingStatus('');
+        if (createAuctionStatus.includes('✅')) setCreateAuctionStatus('');
+        if (bidStatus.includes('✅')) setBidStatus('');
+        if (cancelAuctionStatus.includes('✅')) setCancelAuctionStatus('');
+        if (endAuctionStatus.includes('✅')) setEndAuctionStatus('');
       }, 4000);
       return () => clearTimeout(timer);
 
@@ -2570,6 +2883,21 @@ function App() {
       } else if (actionType === 'burn' && actionTokenId) {
         userFacingError = `⚠️ Burning token ${actionTokenId} failed: ${confirmationError.shortMessage || confirmationError.message}`;
         setBurnStatus(userFacingError);
+      } else if (actionType === 'cancelListing' && actionDetails) {
+        userFacingError = `⚠️ Cancelling listing failed (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
+        setCancelListingStatus(userFacingError);
+      } else if (actionType === 'createAuction' && actionTokenId) {
+        userFacingError = `⚠️ Creating auction for token ${actionTokenId} failed: ${confirmationError.shortMessage || confirmationError.message}`;
+        setCreateAuctionStatus(userFacingError);
+      } else if (actionType === 'bid' && actionDetails) {
+        userFacingError = `⚠️ Bid failed (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
+        setBidStatus(userFacingError);
+      } else if (actionType === 'cancelAuction' && actionDetails) {
+        userFacingError = `⚠️ Cancelling auction failed (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
+        setCancelAuctionStatus(userFacingError);
+      } else if (actionType === 'endAuction' && actionDetails) {
+        userFacingError = `⚠️ Ending auction failed (${actionDetails}): ${confirmationError.shortMessage || confirmationError.message}`;
+        setEndAuctionStatus(userFacingError);
       }
       setCurrentActionInfo({ type: null }); // Reset action info
       }
@@ -2582,15 +2910,23 @@ function App() {
         if (listStatus.includes('⚠️')) setListStatus('');
         if (buyStatus.includes('⚠️')) setBuyStatus('');
         if (burnStatus.includes('⚠️')) setBurnStatus('');
+        if (cancelListingStatus.includes('⚠️')) setCancelListingStatus('');
+        if (createAuctionStatus.includes('⚠️')) setCreateAuctionStatus('');
+        if (bidStatus.includes('⚠️')) setBidStatus('');
+        if (cancelAuctionStatus.includes('⚠️')) setCancelAuctionStatus('');
+        if (endAuctionStatus.includes('⚠️')) setEndAuctionStatus('');
       }, 7000);
       return () => clearTimeout(errorTimer);
     }
   }, [
     isConfirmed, receipt, confirmationError, currentActionInfo,
     refetchBalance, refetchApprovalStatus, refetchNextTokenId, resetWriteContract, // Changed refetchTotalSupply to refetchNextTokenId
-    listTokenId, setListTokenId, setRefreshMarketplaceTrigger,
-    setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, // Include setters
-    mintStatus, approveStatus, listStatus, buyStatus, burnStatus // Include status strings for timeout clearing logic
+    listTokenId, setListTokenId, 
+    setRefreshMarketplaceTrigger, setRefreshAuctionsTrigger,
+    setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, 
+    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, // Include setters
+    mintStatus, approveStatus, listStatus, buyStatus, burnStatus,
+    cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus // Include status strings
   ]);  
   return (
     <>
@@ -2645,7 +2981,11 @@ function App() {
                     ))}
                     {burnStatus && <p><small>{burnStatus}</small></p>}
                   </div>
-                  <h4 style={{marginTop: '15px'}}>List a Card for Sale</h4>
+
+                  {/* Combined Listing and Auction Creation Form */}
+                  <h4 style={{marginTop: '15px'}}>Manage Your Card (ID: {listTokenId || 'Select a card'})</h4>
+                  <p><small>Select a card from your collection above to manage (list for sale, create auction, etc.). The approval step is for the Trading Platform contract to manage your selected token.</small></p>
+                  
                   <label htmlFor="token-select">Token ID: </label>
                   <select id="token-select" value={listTokenId} onChange={(e) => setListTokenId(e.target.value)}>
                     {ownedPokemonDetails.map(p => <option key={p.tokenId} value={p.tokenId}>{p.name} (ID: {p.tokenId})</option>)}
@@ -2653,7 +2993,7 @@ function App() {
                   <br />
                   <label htmlFor="price-input">Price (ETH): </label>
                   <input id="price-input" type="text" value={listPrice} onChange={(e) => setListPrice(e.target.value)} placeholder="e.g., 0.1" />
-                  <br />
+                  
                   <button
                     onClick={handleApprove}
                     disabled={!listTokenId || isTokenApproved || isLoadingApprovalStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'approve')}
@@ -2670,11 +3010,35 @@ function App() {
                     {((isWritePending || isConfirming) && currentActionInfo.type === 'list') ? (isConfirming ? 'Listing (Confirming...)' : 'Sending to Wallet...') :
                      (listStatus && !listStatus.includes('listed') && !listStatus.includes('failed')) ? listStatus : '2. List Card'}
                   </button>
+                  <br/>
+                  {/* Create Auction Inputs - reusing the selected listTokenId for approval simplicity */}
+                  <label htmlFor="auction-start-price">Auction Start Price (ETH): </label>
+                  <input id="auction-start-price" type="text" value={createAuctionStartingPrice} onChange={(e) => setCreateAuctionStartingPrice(e.target.value)} placeholder="e.g., 0.05" />
+                  
+                  <label htmlFor="auction-duration">Duration (minutes): </label>
+                  <input id="auction-duration" type="number" value={createAuctionDurationMinutes} onChange={(e) => setCreateAuctionDurationMinutes(e.target.value)} placeholder="e.g., 60" />
+                  
+                  <button
+                    onClick={() => {
+                      // Ensure the token selected for auction is the one that's been approved.
+                      // This simple check assumes `listTokenId` is the one intended for auction.
+                      if (listTokenId) {
+                        setCreateAuctionTokenId(listTokenId); // Set the token for auction
+                        handleCreateAuction();
+                      } else {
+                        alert("Please select a token ID from the dropdown first.");
+                      }
+                    }}
+                    disabled={!listTokenId || !createAuctionStartingPrice || !createAuctionDurationMinutes || !isTokenApproved || ((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction')}
+                  >
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction') ? (isConfirming ? 'Creating Auction (Confirming...)' : 'Sending...') : '3. Create Auction'}
+                  </button>
                   {/* Display specific errors if they occurred during these actions */}
-                  {(writeError && (currentActionInfo.type === 'approve' || currentActionInfo.type === 'list')) && <p style={{ color: 'red' }}>Tx Error: {writeError.shortMessage || writeError.message}</p>}
+                  {(writeError && (currentActionInfo.type === 'approve' || currentActionInfo.type === 'list' || currentActionInfo.type === 'createAuction')) && <p style={{ color: 'red' }}>Tx Error: {writeError.shortMessage || writeError.message}</p>}
                   {/* Display final status messages (success/failure) */}
                   {approveStatus && (approveStatus.includes('approved') || approveStatus.includes('failed')) && <p><small>{approveStatus}</small></p>}
                   {listStatus && (listStatus.includes('listed') || listStatus.includes('failed')) &&  <p><small>{listStatus}</small></p>}
+                  {createAuctionStatus && <p><small>{createAuctionStatus}</small></p>}
                 </>
               ) : (
                 !isLoadingTokenIds && !fetchTokenIdsError && <p>You don't own any Pokémon NFTs yet. Try minting one!</p>
@@ -2732,17 +3096,89 @@ function App() {
                       <p>Price: {item.price} ETH</p>
                       <p><small>Seller: {item.seller === account.address ? 'You' : item.seller}</small></p>
                       {item.seller !== account.address && (
-                        <button
-                          onClick={() => handleBuyItem(item.listingId, item.priceInWei)}
-                          disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId)}
-                        >
-                          {((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId) ? (isConfirming ? 'Confirming Buy...' : 'Sending...') :
-                           (buyStatus.includes(item.listingId) && buyStatus.includes('failed')) ? 'Buy Failed - Retry?' :
-                           'Buy Now'}
+                        <button onClick={() => handleBuyItem(item.listingId, item.priceInWei)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId)}>
+                          {((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId) ? (isConfirming ? 'Confirming Buy...' : 'Sending...') : 'Buy Now'}
+                        </button>
+                      )}
+                      {item.seller === account.address && (
+                        <button onClick={() => handleCancelListing(item.listingId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(item.listingId))}>
+                          {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(item.listingId)) ? (isConfirming ? 'Confirming Cancel...' : 'Sending...') : 'Cancel Listing'}
                         </button>
                       )}
                       {/* Display final buy status for this specific item */}
                       {buyStatus && buyStatus.includes(item.listingId) && (buyStatus.includes('✅') || buyStatus.includes('⚠️')) && <p><small>{buyStatus.replace(`item ${item.listingId}`, 'this item')}</small></p>}
+                      {cancelListingStatus && cancelListingStatus.includes(item.listingId) && <p><small>{cancelListingStatus}</small></p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Active Auctions Section */}
+            <div>
+              <hr style={{ margin: '20px 0' }} />
+              <h2>Active Auctions</h2>
+              <button onClick={() => setRefreshAuctionsTrigger(prev => prev + 1)} disabled={isLoadingAuctions}>
+                {isLoadingAuctions ? 'Refreshing Auctions...' : 'Refresh Auctions'}
+              </button>
+              {isLoadingAuctions && activeAuctions.length === 0 && <p>Loading auctions...</p>}
+              {auctionsError && <p style={{ color: 'red' }}>{auctionsError}</p>}
+              {!isLoadingAuctions && !auctionsError && activeAuctions.length === 0 && <p>No active auctions.</p>}
+
+              {activeAuctions.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '10px', opacity: isLoadingAuctions ? 0.6 : 1, transition: 'opacity 0.3s ease-in-out' }}>
+                  {activeAuctions.map((auction) => (
+                    <div key={auction.auctionId} style={{ border: '1px solid #ccc', padding: '15px', width: '280px' }}>
+                      {auction.pokemonData?.imageUrl && <img src={auction.pokemonData.imageUrl} alt={auction.pokemonData.name || `Token ${auction.tokenId}`} style={{ maxWidth: '100%', height: 'auto', marginBottom: '10px' }} />}
+                      <h4>{auction.pokemonData?.name || `Token ID: ${auction.tokenId}`} (Auction ID: {auction.auctionId})</h4>
+                      {auction.pokemonData && <p style={{fontSize: '0.8em'}}>HP: {auction.pokemonData.hp}, Atk: {auction.pokemonData.attack}, Def: {auction.pokemonData.defense}</p>}
+                      <p>Seller: {auction.seller === account.address ? 'You' : auction.seller.substring(0,6)}</p>
+                      <p>Ends: {new Date(auction.endTime * 1000).toLocaleString()}</p>
+                      <p>Starting Price: {auction.startingPrice} ETH</p>
+                      <p>Highest Bid: {auction.highestBid} ETH by {auction.highestBidder === '0x0000000000000000000000000000000000000000' ? 'N/A' : auction.highestBidder.substring(0,6)}</p>
+
+                      {auction.active && !auction.ended && new Date().getTime() / 1000 < auction.endTime && ( // Auction is ongoing
+                        <>
+                          {auction.seller !== account.address && (
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="Your bid (ETH)"
+                                value={bidInputs[auction.auctionId] || ''}
+                                onChange={(e) => handleBidInputChange(auction.auctionId, e.target.value)}
+                                style={{width: '60%', marginRight: '5px'}}
+                              />
+                              <button onClick={() => handleBid(auction.auctionId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'bid' && currentActionInfo.details?.includes(auction.auctionId))}>
+                                {((isWritePending || isConfirming) && currentActionInfo.type === 'bid' && currentActionInfo.details?.includes(auction.auctionId)) ? 'Bidding...' : 'Place Bid'}
+                              </button>
+                            </div>
+                          )}
+                          {auction.seller === account.address && auction.highestBidder === '0x0000000000000000000000000000000000000000' && ( // Seller can cancel if no bids
+                            <button onClick={() => handleCancelAuction(auction.auctionId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(auction.auctionId))}>
+                              {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(auction.auctionId)) ? 'Cancelling...' : 'Cancel Auction'}
+                            </button>
+                          )}
+                        </>
+                      )}
+
+                      {auction.active && !auction.ended && new Date().getTime() / 1000 >= auction.endTime && ( // Auction time has passed, can be ended
+                        <button onClick={() => handleEndAuction(auction.auctionId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'endAuction' && currentActionInfo.details?.includes(auction.auctionId))}>
+                          {((isWritePending || isConfirming) && currentActionInfo.type === 'endAuction' && currentActionInfo.details?.includes(auction.auctionId)) ? 'Ending...' : 'End Auction'}
+                        </button>
+                      )}
+
+                      {!auction.active && auction.ended && (
+                        <p style={{fontWeight: 'bold'}}>
+                          {auction.highestBidder !== '0x0000000000000000000000000000000000000000'
+                            ? `Ended. Winner: ${auction.highestBidder.substring(0,6)}`
+                            : 'Ended (No Bids/Cancelled)'}
+                        </p>
+                      )}
+                      
+                      {/* Status messages for this auction item */}
+                      {bidStatus && bidStatus.includes(auction.auctionId) && <p><small>{bidStatus}</small></p>}
+                      {cancelAuctionStatus && cancelAuctionStatus.includes(auction.auctionId) && <p><small>{cancelAuctionStatus}</small></p>}
+                      {endAuctionStatus && endAuctionStatus.includes(auction.auctionId) && <p><small>{endAuctionStatus}</small></p>}
                     </div>
                   ))}
                 </div>
