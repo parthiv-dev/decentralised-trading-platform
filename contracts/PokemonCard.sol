@@ -21,13 +21,15 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         uint256 attack;
         uint256 defense;
         uint256 speed;
-        string imageURI;
+        // string imageURI; // Not needed if image is from IPFS
     }
 
     constructor(address initialOwner)
         ERC721("PokemonCard", "PKMN")
         Ownable(initialOwner)
-    {}
+    {
+       _nextTokenId = 1; // Start token IDs from 1 
+    }
 
     // START OF NEW CODE
 
@@ -69,8 +71,6 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
     // END OF NEW CODE
 
     // Secure minting functionality that allows only the contract owner to mint new tokens
-    // Changed onlyOwner to onlyAuthorized to allow authorized minters to mint
-
     // Changed onlyOwner to onlyAuthorized to allow authorized minters to mint
 
     function safeMint(address to, string memory uri)

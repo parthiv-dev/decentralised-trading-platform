@@ -1,0 +1,35 @@
+{
+    "name": "Bulbasaur",
+    "description": "A strange seed was planted on its back at birth. The plant sprouts and grows with this POK\u00e9MON.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/83.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Poison"
+        },
+        {
+            "trait_type": "HP",
+            "value": 45
+        },
+        {
+            "trait_type": "Attack",
+            "value": 49
+        },
+        {
+            "trait_type": "Defense",
+            "value": 49
+        },
+        {
+            "trait_type": "Speed",
+            "value": 45
+        },
+        {
+            "trait_type": "Special",
+            "value": 65
+        }
+    ]
+}

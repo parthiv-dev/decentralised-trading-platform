@@ -1,0 +1,35 @@
+{
+    "name": "Barboach",
+    "description": "BARBOACH\u2019s sensitive whiskers serve as a superb radar system. This POK\u00e9MON hides in mud, leaving only its two whiskers exposed while it waits for prey to come along.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/45.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Water"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Ground"
+        },
+        {
+            "trait_type": "HP",
+            "value": 50
+        },
+        {
+            "trait_type": "Attack",
+            "value": 48
+        },
+        {
+            "trait_type": "Defense",
+            "value": 43
+        },
+        {
+            "trait_type": "Speed",
+            "value": 60
+        },
+        {
+            "trait_type": "Special",
+            "value": 46
+        }
+    ]
+}

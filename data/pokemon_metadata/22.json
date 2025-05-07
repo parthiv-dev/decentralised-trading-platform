@@ -1,0 +1,31 @@
+{
+    "name": "Arcanine",
+    "description": "A POK\u00e9MON that has been admired since the past for its beauty. It runs agilely as if on wings.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/22.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Fire"
+        },
+        {
+            "trait_type": "HP",
+            "value": 90
+        },
+        {
+            "trait_type": "Attack",
+            "value": 110
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 95
+        },
+        {
+            "trait_type": "Special",
+            "value": 100
+        }
+    ]
+}

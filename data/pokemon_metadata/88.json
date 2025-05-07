@@ -1,0 +1,35 @@
+{
+    "name": "Buzzwole",
+    "description": "This Ultra Beast appeared from another world. It shows off its body, but whether that display is a boast or a threat remains unclear.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/88.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Fighting"
+        },
+        {
+            "trait_type": "HP",
+            "value": 107
+        },
+        {
+            "trait_type": "Attack",
+            "value": 139
+        },
+        {
+            "trait_type": "Defense",
+            "value": 139
+        },
+        {
+            "trait_type": "Speed",
+            "value": 79
+        },
+        {
+            "trait_type": "Special",
+            "value": 53
+        }
+    ]
+}

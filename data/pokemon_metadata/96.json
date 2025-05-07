@@ -1,0 +1,35 @@
+{
+    "name": "Carracosta",
+    "description": "They can live both in the ocean and on land. A slap from one of them is enough to open a hole in the bottom of a tanker.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/96.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Water"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "HP",
+            "value": 74
+        },
+        {
+            "trait_type": "Attack",
+            "value": 108
+        },
+        {
+            "trait_type": "Defense",
+            "value": 133
+        },
+        {
+            "trait_type": "Speed",
+            "value": 32
+        },
+        {
+            "trait_type": "Special",
+            "value": 83
+        }
+    ]
+}

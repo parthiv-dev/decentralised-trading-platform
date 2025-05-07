@@ -1,0 +1,31 @@
+{
+    "name": "Bouffalant",
+    "description": "Their fluffy fur absorbs damage, even if they strike foes with a fierce headbutt.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/72.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "HP",
+            "value": 95
+        },
+        {
+            "trait_type": "Attack",
+            "value": 110
+        },
+        {
+            "trait_type": "Defense",
+            "value": 95
+        },
+        {
+            "trait_type": "Speed",
+            "value": 55
+        },
+        {
+            "trait_type": "Special",
+            "value": 40
+        }
+    ]
+}

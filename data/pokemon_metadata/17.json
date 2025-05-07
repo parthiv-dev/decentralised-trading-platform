@@ -1,0 +1,35 @@
+{
+    "name": "Anorith",
+    "description": "ANORITH was regenerated from a prehistoric fossil. This primitive POK\u00e9MON once lived in warm seas. It grips its prey firmly between its two large claws.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/17.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "HP",
+            "value": 45
+        },
+        {
+            "trait_type": "Attack",
+            "value": 95
+        },
+        {
+            "trait_type": "Defense",
+            "value": 50
+        },
+        {
+            "trait_type": "Speed",
+            "value": 75
+        },
+        {
+            "trait_type": "Special",
+            "value": 40
+        }
+    ]
+}

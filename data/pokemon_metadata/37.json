@@ -1,0 +1,31 @@
+{
+    "name": "Axew",
+    "description": "They use their tusks to crush the berries they eat. Repeated regrowth makes their tusks strong and sharp.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/37.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Dragon"
+        },
+        {
+            "trait_type": "HP",
+            "value": 46
+        },
+        {
+            "trait_type": "Attack",
+            "value": 87
+        },
+        {
+            "trait_type": "Defense",
+            "value": 60
+        },
+        {
+            "trait_type": "Speed",
+            "value": 57
+        },
+        {
+            "trait_type": "Special",
+            "value": 30
+        }
+    ]
+}

@@ -1,0 +1,35 @@
+{
+    "name": "Beautifly",
+    "description": "BEAUTIFLY\u2019s favorite food is the sweet pollen of flowers. If you want to see this POK\u00e9MON, just leave a potted flower by an open window. BEAUTIFLY is sure to come looking for pollen.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/51.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Flying"
+        },
+        {
+            "trait_type": "HP",
+            "value": 60
+        },
+        {
+            "trait_type": "Attack",
+            "value": 70
+        },
+        {
+            "trait_type": "Defense",
+            "value": 50
+        },
+        {
+            "trait_type": "Speed",
+            "value": 65
+        },
+        {
+            "trait_type": "Special",
+            "value": 100
+        }
+    ]
+}

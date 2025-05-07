@@ -1,0 +1,35 @@
+{
+    "name": "Appletun",
+    "description": "Eating a sweet apple caused its evolution. A nectarous scent wafts from its body, luring in the bug Pok\u00e9mon it preys on.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/18.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Dragon"
+        },
+        {
+            "trait_type": "HP",
+            "value": 110
+        },
+        {
+            "trait_type": "Attack",
+            "value": 85
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 30
+        },
+        {
+            "trait_type": "Special",
+            "value": 100
+        }
+    ]
+}

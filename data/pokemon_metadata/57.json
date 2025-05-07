@@ -1,0 +1,31 @@
+{
+    "name": "Bergmite",
+    "description": "It blocks opponents\u2019 attacks with the ice that shields its body. It uses cold air to repair any cracks with new ice.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/57.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Ice"
+        },
+        {
+            "trait_type": "HP",
+            "value": 55
+        },
+        {
+            "trait_type": "Attack",
+            "value": 69
+        },
+        {
+            "trait_type": "Defense",
+            "value": 85
+        },
+        {
+            "trait_type": "Speed",
+            "value": 28
+        },
+        {
+            "trait_type": "Special",
+            "value": 32
+        }
+    ]
+}

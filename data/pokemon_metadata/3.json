@@ -1,0 +1,31 @@
+{
+    "name": "Absol",
+    "description": "Every time ABSOL appears before people, it is followed by a disaster such as an earthquake or a tidal wave. As a result, it came to be known as the disaster POK\u00e9MON.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/3.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Dark"
+        },
+        {
+            "trait_type": "HP",
+            "value": 65
+        },
+        {
+            "trait_type": "Attack",
+            "value": 130
+        },
+        {
+            "trait_type": "Defense",
+            "value": 60
+        },
+        {
+            "trait_type": "Speed",
+            "value": 75
+        },
+        {
+            "trait_type": "Special",
+            "value": 75
+        }
+    ]
+}

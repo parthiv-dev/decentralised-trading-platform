@@ -1,0 +1,35 @@
+{
+    "name": "Beedrill",
+    "description": "It has three poisonous stingers on its forelegs and its tail. They are used to jab its enemy repeatedly.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/52.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Poison"
+        },
+        {
+            "trait_type": "HP",
+            "value": 65
+        },
+        {
+            "trait_type": "Attack",
+            "value": 90
+        },
+        {
+            "trait_type": "Defense",
+            "value": 40
+        },
+        {
+            "trait_type": "Speed",
+            "value": 75
+        },
+        {
+            "trait_type": "Special",
+            "value": 45
+        }
+    ]
+}

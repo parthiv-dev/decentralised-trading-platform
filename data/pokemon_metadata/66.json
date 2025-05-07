@@ -1,0 +1,31 @@
+{
+    "name": "Blipbug",
+    "description": "A constant collector of information, this Pok\u00e9mon is very smart. Very strong is what it isn\u2019t.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/66.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "HP",
+            "value": 25
+        },
+        {
+            "trait_type": "Attack",
+            "value": 20
+        },
+        {
+            "trait_type": "Defense",
+            "value": 20
+        },
+        {
+            "trait_type": "Speed",
+            "value": 45
+        },
+        {
+            "trait_type": "Special",
+            "value": 25
+        }
+    ]
+}

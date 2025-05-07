@@ -1,0 +1,31 @@
+{
+    "name": "Bunnelby",
+    "description": "They use their large ears to dig burrows. They will dig the whole night through.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/85.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "HP",
+            "value": 38
+        },
+        {
+            "trait_type": "Attack",
+            "value": 36
+        },
+        {
+            "trait_type": "Defense",
+            "value": 38
+        },
+        {
+            "trait_type": "Speed",
+            "value": 57
+        },
+        {
+            "trait_type": "Special",
+            "value": 32
+        }
+    ]
+}

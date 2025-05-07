@@ -1,0 +1,31 @@
+{
+    "name": "Blitzle",
+    "description": "When thunderclouds cover the sky, it will appear. It can catch lightning with its mane and store the electricity.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/68.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Electric"
+        },
+        {
+            "trait_type": "HP",
+            "value": 45
+        },
+        {
+            "trait_type": "Attack",
+            "value": 60
+        },
+        {
+            "trait_type": "Defense",
+            "value": 32
+        },
+        {
+            "trait_type": "Speed",
+            "value": 76
+        },
+        {
+            "trait_type": "Special",
+            "value": 50
+        }
+    ]
+}

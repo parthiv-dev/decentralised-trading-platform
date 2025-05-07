@@ -1,0 +1,35 @@
+{
+    "name": "Blaziken",
+    "description": "In battle, BLAZIKEN blows out intense flames from its wrists and attacks foes courageously. The stronger the foe, the more intensely this POK\u00e9MON\u2019s wrists burn.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/65.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Fire"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Fighting"
+        },
+        {
+            "trait_type": "HP",
+            "value": 80
+        },
+        {
+            "trait_type": "Attack",
+            "value": 120
+        },
+        {
+            "trait_type": "Defense",
+            "value": 70
+        },
+        {
+            "trait_type": "Speed",
+            "value": 80
+        },
+        {
+            "trait_type": "Special",
+            "value": 110
+        }
+    ]
+}

@@ -1,0 +1,31 @@
+{
+    "name": "Buneary",
+    "description": "It slams foes by sharply uncoiling its rolled ears. It stings enough to make a grown-up cry in pain.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/84.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "HP",
+            "value": 55
+        },
+        {
+            "trait_type": "Attack",
+            "value": 66
+        },
+        {
+            "trait_type": "Defense",
+            "value": 44
+        },
+        {
+            "trait_type": "Speed",
+            "value": 85
+        },
+        {
+            "trait_type": "Special",
+            "value": 44
+        }
+    ]
+}

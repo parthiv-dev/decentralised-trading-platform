@@ -1,0 +1,31 @@
+{
+    "name": "Cacnea",
+    "description": "CACNEA lives in arid locations such as deserts. It releases a strong aroma from its flower to attract prey. When prey comes near, this POK\u00e9MON shoots sharp thorns from its body to bring the victim down.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/89.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "HP",
+            "value": 50
+        },
+        {
+            "trait_type": "Attack",
+            "value": 85
+        },
+        {
+            "trait_type": "Defense",
+            "value": 40
+        },
+        {
+            "trait_type": "Speed",
+            "value": 35
+        },
+        {
+            "trait_type": "Special",
+            "value": 85
+        }
+    ]
+}

@@ -1,0 +1,35 @@
+{
+    "name": "Camerupt",
+    "description": "CAMERUPT has a volcano inside its body. Magma of 18,000 degrees F courses through its body. Occasionally, the humps on this POK\u00e9MON\u2019s back erupt, spewing the superheated magma.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/92.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Fire"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Ground"
+        },
+        {
+            "trait_type": "HP",
+            "value": 70
+        },
+        {
+            "trait_type": "Attack",
+            "value": 100
+        },
+        {
+            "trait_type": "Defense",
+            "value": 70
+        },
+        {
+            "trait_type": "Speed",
+            "value": 40
+        },
+        {
+            "trait_type": "Special",
+            "value": 105
+        }
+    ]
+}

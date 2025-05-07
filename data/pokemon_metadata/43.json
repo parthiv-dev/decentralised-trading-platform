@@ -1,0 +1,31 @@
+{
+    "name": "Banette",
+    "description": "BANETTE generates energy for laying strong curses by sticking pins into its own body. This POK\u00e9MON was originally a pitiful plush doll that was thrown away.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/43.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Ghost"
+        },
+        {
+            "trait_type": "HP",
+            "value": 64
+        },
+        {
+            "trait_type": "Attack",
+            "value": 115
+        },
+        {
+            "trait_type": "Defense",
+            "value": 65
+        },
+        {
+            "trait_type": "Speed",
+            "value": 65
+        },
+        {
+            "trait_type": "Special",
+            "value": 83
+        }
+    ]
+}

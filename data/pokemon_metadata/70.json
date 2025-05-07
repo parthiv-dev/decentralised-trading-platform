@@ -1,0 +1,31 @@
+{
+    "name": "Boltund",
+    "description": "This Pok\u00e9mon generates electricity and channels it into its legs to keep them going strong. Boltund can run nonstop for three full days.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/70.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Electric"
+        },
+        {
+            "trait_type": "HP",
+            "value": 69
+        },
+        {
+            "trait_type": "Attack",
+            "value": 90
+        },
+        {
+            "trait_type": "Defense",
+            "value": 60
+        },
+        {
+            "trait_type": "Speed",
+            "value": 121
+        },
+        {
+            "trait_type": "Special",
+            "value": 90
+        }
+    ]
+}

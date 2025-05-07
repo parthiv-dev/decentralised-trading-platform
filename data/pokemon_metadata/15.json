@@ -1,0 +1,35 @@
+{
+    "name": "Amoonguss",
+    "description": "It lures prey close by dancing and waving its arm caps, which resemble Pok\u00e9 Balls, in a swaying motion.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/15.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Poison"
+        },
+        {
+            "trait_type": "HP",
+            "value": 114
+        },
+        {
+            "trait_type": "Attack",
+            "value": 85
+        },
+        {
+            "trait_type": "Defense",
+            "value": 70
+        },
+        {
+            "trait_type": "Speed",
+            "value": 30
+        },
+        {
+            "trait_type": "Special",
+            "value": 85
+        }
+    ]
+}

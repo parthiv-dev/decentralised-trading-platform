@@ -1,0 +1,35 @@
+{
+    "name": "Breloom",
+    "description": "BRELOOM closes in on its foe with light and sprightly footwork, then throws punches with its stretchy arms. This POK\u00e9MON\u2019s fighting technique puts boxers to shame.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/76.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Fighting"
+        },
+        {
+            "trait_type": "HP",
+            "value": 60
+        },
+        {
+            "trait_type": "Attack",
+            "value": 130
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 70
+        },
+        {
+            "trait_type": "Special",
+            "value": 60
+        }
+    ]
+}

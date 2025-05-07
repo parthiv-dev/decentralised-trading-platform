@@ -1,0 +1,35 @@
+{
+    "name": "Armaldo",
+    "description": "ARMALDO\u2019s tough armor makes all attacks bounce off. This POK\u00e9MON\u2019s two enormous claws can be freely extended or contracted. They have the power to punch right through a steel slab.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/29.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "HP",
+            "value": 75
+        },
+        {
+            "trait_type": "Attack",
+            "value": 125
+        },
+        {
+            "trait_type": "Defense",
+            "value": 100
+        },
+        {
+            "trait_type": "Speed",
+            "value": 45
+        },
+        {
+            "trait_type": "Special",
+            "value": 70
+        }
+    ]
+}

@@ -1,0 +1,35 @@
+{
+    "name": "Beldum",
+    "description": "Instead of blood, a powerful magnetic force courses throughout BELDUM\u2019s body. This POK\u00e9MON communicates with others by sending controlled pulses of magnetism.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/54.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Steel"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Psychic"
+        },
+        {
+            "trait_type": "HP",
+            "value": 40
+        },
+        {
+            "trait_type": "Attack",
+            "value": 55
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 30
+        },
+        {
+            "trait_type": "Special",
+            "value": 35
+        }
+    ]
+}

@@ -1,0 +1,35 @@
+{
+    "name": "Bisharp",
+    "description": "It leads a group of Pawniard. It battles to become the boss, but will be driven from the group if it loses.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/62.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Dark"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Steel"
+        },
+        {
+            "trait_type": "HP",
+            "value": 65
+        },
+        {
+            "trait_type": "Attack",
+            "value": 125
+        },
+        {
+            "trait_type": "Defense",
+            "value": 100
+        },
+        {
+            "trait_type": "Speed",
+            "value": 70
+        },
+        {
+            "trait_type": "Special",
+            "value": 60
+        }
+    ]
+}

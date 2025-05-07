@@ -1,0 +1,31 @@
+{
+    "name": "Ampharos",
+    "description": "The tail's tip shines brightly and can be seen from far away. It acts as a beacon for lost people.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/16.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Electric"
+        },
+        {
+            "trait_type": "HP",
+            "value": 90
+        },
+        {
+            "trait_type": "Attack",
+            "value": 75
+        },
+        {
+            "trait_type": "Defense",
+            "value": 85
+        },
+        {
+            "trait_type": "Speed",
+            "value": 55
+        },
+        {
+            "trait_type": "Special",
+            "value": 115
+        }
+    ]
+}

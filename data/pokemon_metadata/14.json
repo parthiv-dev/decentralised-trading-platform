@@ -1,0 +1,31 @@
+{
+    "name": "Ambipom",
+    "description": "To eat, it deftly shucks nuts with its two tails. It rarely uses its arms now.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/14.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "HP",
+            "value": 75
+        },
+        {
+            "trait_type": "Attack",
+            "value": 100
+        },
+        {
+            "trait_type": "Defense",
+            "value": 66
+        },
+        {
+            "trait_type": "Speed",
+            "value": 115
+        },
+        {
+            "trait_type": "Special",
+            "value": 60
+        }
+    ]
+}

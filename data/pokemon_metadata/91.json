@@ -1,0 +1,35 @@
+{
+    "name": "Calyrex",
+    "description": "Calyrex is a merciful Pok\u00e9mon, capable of providing healing and blessings. It reigned over the Galar region in times of yore.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/91.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Psychic"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "HP",
+            "value": 100
+        },
+        {
+            "trait_type": "Attack",
+            "value": 80
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 80
+        },
+        {
+            "trait_type": "Special",
+            "value": 80
+        }
+    ]
+}

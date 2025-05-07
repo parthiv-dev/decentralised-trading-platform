@@ -1,0 +1,35 @@
+{
+    "name": "Bewear",
+    "description": "This immensely dangerous Pok\u00e9mon possesses overwhelming physical strength. Its habitat is generally off-limits.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/58.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Fighting"
+        },
+        {
+            "trait_type": "HP",
+            "value": 120
+        },
+        {
+            "trait_type": "Attack",
+            "value": 125
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 60
+        },
+        {
+            "trait_type": "Special",
+            "value": 55
+        }
+    ]
+}

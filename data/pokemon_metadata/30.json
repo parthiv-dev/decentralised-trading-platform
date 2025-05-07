@@ -1,0 +1,31 @@
+{
+    "name": "Aromatisse",
+    "description": "It devises various scents, pleasant and unpleasant, and emits scents that its enemies dislike in order to gain an edge in battle.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/30.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Fairy"
+        },
+        {
+            "trait_type": "HP",
+            "value": 101
+        },
+        {
+            "trait_type": "Attack",
+            "value": 72
+        },
+        {
+            "trait_type": "Defense",
+            "value": 72
+        },
+        {
+            "trait_type": "Speed",
+            "value": 29
+        },
+        {
+            "trait_type": "Special",
+            "value": 99
+        }
+    ]
+}

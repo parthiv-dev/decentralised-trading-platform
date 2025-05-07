@@ -1,0 +1,35 @@
+{
+    "name": "Bellsprout",
+    "description": "A carnivorous POK\u00e9MON that traps and eats bugs. It uses its root feet to soak up needed moisture.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/56.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Poison"
+        },
+        {
+            "trait_type": "HP",
+            "value": 50
+        },
+        {
+            "trait_type": "Attack",
+            "value": 75
+        },
+        {
+            "trait_type": "Defense",
+            "value": 35
+        },
+        {
+            "trait_type": "Speed",
+            "value": 40
+        },
+        {
+            "trait_type": "Special",
+            "value": 70
+        }
+    ]
+}

@@ -1,0 +1,31 @@
+{
+    "name": "Beartic",
+    "description": "It can make its breath freeze at will. Very able in the water, it swims around in northern seas and catches prey.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/50.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Ice"
+        },
+        {
+            "trait_type": "HP",
+            "value": 95
+        },
+        {
+            "trait_type": "Attack",
+            "value": 130
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 50
+        },
+        {
+            "trait_type": "Special",
+            "value": 70
+        }
+    ]
+}

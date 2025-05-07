@@ -1,0 +1,35 @@
+{
+    "name": "Applin",
+    "description": "It spends its entire life inside an apple. It hides from its natural enemies, bird Pok\u00e9mon, by pretending it\u2019s just an apple and nothing more.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/19.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Dragon"
+        },
+        {
+            "trait_type": "HP",
+            "value": 40
+        },
+        {
+            "trait_type": "Attack",
+            "value": 40
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 20
+        },
+        {
+            "trait_type": "Special",
+            "value": 40
+        }
+    ]
+}

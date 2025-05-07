@@ -1,0 +1,31 @@
+{
+    "name": "Braixen",
+    "description": "It has a twig stuck in its tail. With friction from its tail fur, it sets the twig on fire and launches into battle.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/74.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Fire"
+        },
+        {
+            "trait_type": "HP",
+            "value": 59
+        },
+        {
+            "trait_type": "Attack",
+            "value": 59
+        },
+        {
+            "trait_type": "Defense",
+            "value": 58
+        },
+        {
+            "trait_type": "Speed",
+            "value": 73
+        },
+        {
+            "trait_type": "Special",
+            "value": 90
+        }
+    ]
+}

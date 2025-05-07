@@ -1,0 +1,35 @@
+{
+    "name": "Abomasnow",
+    "description": "It whips up blizzards in mountains that are always buried in snow. It is the abominable snowman.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/1.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Ice"
+        },
+        {
+            "trait_type": "HP",
+            "value": 90
+        },
+        {
+            "trait_type": "Attack",
+            "value": 92
+        },
+        {
+            "trait_type": "Defense",
+            "value": 75
+        },
+        {
+            "trait_type": "Speed",
+            "value": 60
+        },
+        {
+            "trait_type": "Special",
+            "value": 92
+        }
+    ]
+}

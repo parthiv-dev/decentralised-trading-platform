@@ -1,0 +1,35 @@
+{
+    "name": "Articuno",
+    "description": "A legendary bird POK\u00e9MON that is said to appear to doomed people who are lost in icy mountains.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/33.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Ice"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Flying"
+        },
+        {
+            "trait_type": "HP",
+            "value": 90
+        },
+        {
+            "trait_type": "Attack",
+            "value": 85
+        },
+        {
+            "trait_type": "Defense",
+            "value": 100
+        },
+        {
+            "trait_type": "Speed",
+            "value": 85
+        },
+        {
+            "trait_type": "Special",
+            "value": 95
+        }
+    ]
+}

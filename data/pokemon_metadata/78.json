@@ -1,0 +1,35 @@
+{
+    "name": "Bronzong",
+    "description": "One caused a news sensation when it was dug up at a construction site after a 2,000-year sleep.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/78.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Steel"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Psychic"
+        },
+        {
+            "trait_type": "HP",
+            "value": 67
+        },
+        {
+            "trait_type": "Attack",
+            "value": 89
+        },
+        {
+            "trait_type": "Defense",
+            "value": 116
+        },
+        {
+            "trait_type": "Speed",
+            "value": 33
+        },
+        {
+            "trait_type": "Special",
+            "value": 79
+        }
+    ]
+}

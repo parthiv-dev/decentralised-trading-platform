@@ -1,0 +1,31 @@
+{
+    "name": "Abra",
+    "description": "Using its ability to read minds, it will identify impending danger and TELEPORT to safety.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/2.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Psychic"
+        },
+        {
+            "trait_type": "HP",
+            "value": 25
+        },
+        {
+            "trait_type": "Attack",
+            "value": 20
+        },
+        {
+            "trait_type": "Defense",
+            "value": 15
+        },
+        {
+            "trait_type": "Speed",
+            "value": 90
+        },
+        {
+            "trait_type": "Special",
+            "value": 105
+        }
+    ]
+}

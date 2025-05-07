@@ -1,0 +1,31 @@
+{
+    "name": "Accelgor",
+    "description": "When its body dries out, it weakens. So, to prevent dehydration, it wraps itself in many layers of thin membrane.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/4.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "HP",
+            "value": 80
+        },
+        {
+            "trait_type": "Attack",
+            "value": 70
+        },
+        {
+            "trait_type": "Defense",
+            "value": 40
+        },
+        {
+            "trait_type": "Speed",
+            "value": 145
+        },
+        {
+            "trait_type": "Special",
+            "value": 100
+        }
+    ]
+}
