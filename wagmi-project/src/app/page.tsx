@@ -21,7 +21,7 @@ interface DisplayPokemonDataWithStatus extends DisplayPokemonData {
 }
 
 
-const pokemonCardAbi =  [
+const pokemonCardAbi = [
   {
     "inputs": [
       {
@@ -953,7 +953,7 @@ const pokemonCardAbi =  [
     "stateMutability": "nonpayable",
     "type": "function"
   }
-] as const // <-- Important: use "as const"
+]  as const // <-- Important: use "as const"
 
 const tradingPlatformAbi =  [
   {

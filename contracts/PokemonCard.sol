@@ -19,6 +19,9 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
     /// @notice Counter for the next token ID to be minted. Starts at 0, so the first token ID is 1.
     uint256 private _nextTokenId;
 
+    /// @notice Mapping from a keccak256 hash of on-chain metadata to a boolean indicating if it has been used.
+    mapping(bytes32 => bool) private _usedMetadataHashes;
+
     /**
      * @dev Struct to hold on-chain Pokemon metadata.
      * @param name The name of the Pokemon.
@@ -162,6 +165,12 @@ contract PokemonCard is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Pausab
         onlyAuthorized
         returns (uint256)
     {
+        // Create a unique hash for the combination of on-chain metadata
+        bytes32 metadataHash = keccak256(abi.encodePacked(_name, _hp, _attack, _defense, _speed, _type1, _type2, _special));
+        require(!_usedMetadataHashes[metadataHash], "PokemonCard: This exact set of on-chain metadata has already been minted.");
+        _usedMetadataHashes[metadataHash] = true;
+
+
         uint256 tokenId = ++_nextTokenId;
     
         // Store core stats on-chain. These could be useful for direct contract interactions
