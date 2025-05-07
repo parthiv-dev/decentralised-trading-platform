@@ -59,19 +59,7 @@ TODO: @Matteo:
 
 ### Smart Contracts
 
-TODO for 3.1. Smart Contracts:
-- NFT contract for Pokemon cards following ERC271 contract
-- Comprehensive metadata for Pokemon characteristics
-- Secure minting functionalities
-- Access control
 
-- Card listing
-- Fixed-price sales
-- Auctions
-- Secure withdrawal patterns
-- Understanding of smart contract optimization
-- Security best practices in implementation
-- Simplicity
 
 We implment two Solidity contracts:
 - [PokemonCard.sol](contracts\PokemonCard.sol): To **securly mint** Pokemon NFTs and store comprehensive **metadata** for pokemon characteristics
@@ -79,14 +67,41 @@ We implment two Solidity contracts:
 
 #### PokemonCard Contract
 
-[PokemonCard.sol](contracts\PokemonCard.sol) is based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition we used following extensions:
+TODO for 3.1. Smart Contracts:
+- NFT contract for Pokemon cards following ERC271 contract (DONE)
+- Comprehensive metadata for Pokemon characteristics
+- Secure minting functionalities
+- Access control (DONE)
+
+- Understanding of smart contract optimization
+- Security best practices in implementation
+- Simplicity
+
+[PokemonCard.sol](contracts\PokemonCard.sol) is a NFT contract for Pokemons based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition we used following extensions:
 
 
 - [ERC721Burnable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Burnable): To enable token holders destroy their tokens.
-- [ERC721Enumerable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Enumerable): To be able to call the totalSupply() function
-- [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts will be able to pause the functionality marked as whenNotPaused. This is useful for emergency response.
+- [ERC721Enumerable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Enumerable): To be able to call the `totalSupply()` function
+- [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts to pause the functionality marked as `whenNotPaused`. This is useful for emergency response.
 - [ERC721URIStorage](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721URIStorage): To allow updating token URIs for individual token IDs.
-- Ownable: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
+- `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
+
+To be able to store comprehensive metadata for Pokemon characteristics we defined a Pokemon struct:
+
+```
+    struct Pokemon {
+        string name;
+        uint256 hp;
+        uint256 attack;
+        uint256 defense;
+        uint256 speed;
+        string type1;
+        string type2;
+        uint256 special;
+    }
+```
+
+This struct was populated when minting a Pokemon NFT token by calling constructor of [PokemonCard.sol](contracts\PokemonCard.sol). In addition, we stored the metadata and images of Pokemons in a decentralised IPFS. More on this in the section [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
 
 **Access control** is ensured by: 
 - the in-built Ownable (modifier)
