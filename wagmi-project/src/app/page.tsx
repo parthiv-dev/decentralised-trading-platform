@@ -2032,6 +2032,9 @@ function App() {
     const [mintersError, setMintersError] = useState<string | null>(null);
     const [setMinterStatus, setSetMinterStatus] = useState('');
     const [refreshMintersTrigger, setRefreshMintersTrigger] = useState(0);
+
+  // UI State
+  const [activeSection, setActiveSection] = useState<'myCards' | 'marketplace' | 'auctions' | 'admin'>('myCards');
   
   // Determine current network's contract addresses
   const currentNetworkConfig = account.chainId ? contractAddresses[account.chainId as keyof typeof contractAddresses] : null;
@@ -3075,31 +3078,70 @@ function App() {
     cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus, setMinterStatus // Include status strings
   ]);  
   return (
-    <>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}> {/* Centered content */}
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}> {/* Centered content */}
         <AccountConnect />
 
         {account.status === 'connected' && currentNetworkConfig && (
           <>
             <hr />
-            <div className="section-container">
-            <h2>Pokémon Card dApp ({currentNetworkConfig.name})</h2>
-            <p>Pokemon Contract: {POKEMON_CARD_ADDRESS}</p>
-            <p>Trading Platform: {TRADING_PLATFORM_ADDRESS}</p>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <h2>Pokémon Card dApp ({currentNetworkConfig.name})</h2>
+              <p><small>Pokemon Contract: {POKEMON_CARD_ADDRESS}</small></p>
+              <p><small>Trading Platform: {TRADING_PLATFORM_ADDRESS}</small></p>
+            </div>
 
-            <MintCardForm
-              onMint={handleMint}
-              mintStatus={mintStatus}
-              isMintingInProgress={(isWritePending || isConfirming) && currentActionInfo.type === 'mint'}
-              mintingError={writeError && currentActionInfo.type === 'mint' ? writeError : null}
-              // Pass calculated values for the next mint
-              expectedNextPokemonId={nextTokenIdData !== undefined ? BigInt(nextTokenIdData as number | bigint) : undefined}
-              maxPokemonIdReached={nextTokenIdData !== undefined ? (BigInt(nextTokenIdData as number | bigint) > BigInt(MAX_POKEMON_ID)) : false}
-              isLoadingNextId={isLoadingNextTokenId}
-            />
+            <nav className="navbar">
+              <button 
+                onClick={() => setActiveSection('myCards')} 
+                className={activeSection === 'myCards' ? 'active' : ''}
+              >
+                My Cards & Mint
+              </button>
+              <button 
+                onClick={() => setActiveSection('marketplace')} 
+                className={activeSection === 'marketplace' ? 'active' : ''}
+              >
+                Marketplace
+              </button>
+              <button 
+                onClick={() => setActiveSection('auctions')} 
+                className={activeSection === 'auctions' ? 'active' : ''}
+              >
+                Auctions
+              </button>
+              {contractOwner && account.address?.toLowerCase() === contractOwner.toLowerCase() && (
+                <button 
+                  onClick={() => setActiveSection('admin')} 
+                  className={activeSection === 'admin' ? 'active' : ''}
+                >
+                  Admin Panel
+                </button>
+              )}
+            </nav>
 
-            {/* Owned NFTs and Listing */}
+            {/* Transaction Status Area - Visible across sections */}
+            {currentActionInfo.type && (isWritePending || isConfirming || writeTxHash) && (
+              <div className="transaction-status-area" style={{marginBottom: '20px'}}>
+                <h4>Transaction: {currentActionInfo.type} {currentActionInfo.tokenId || currentActionInfo.details || ''}</h4>
+                {isWritePending && <p>Please confirm in your wallet...</p>}
+                {writeTxHash && !isConfirming && <p>Transaction sent (Hash: {writeTxHash.substring(0,10)}...). Waiting for confirmation...</p>}
+                {isConfirming && <p>Confirming transaction (Hash: {writeTxHash?.substring(0,10)}...)...</p>}
+              </div>
+            )}
+
+            {/* Conditionally Rendered Sections */}
+            {activeSection === 'myCards' && (
               <div className="section-container" style={{marginTop: '20px'}}>
+              <MintCardForm
+                onMint={handleMint}
+                mintStatus={mintStatus}
+                isMintingInProgress={(isWritePending || isConfirming) && currentActionInfo.type === 'mint'}
+                mintingError={writeError && currentActionInfo.type === 'mint' ? writeError : null}
+                expectedNextPokemonId={nextTokenIdData !== undefined ? BigInt(nextTokenIdData as number | bigint) : undefined}
+                maxPokemonIdReached={nextTokenIdData !== undefined ? (BigInt(nextTokenIdData as number | bigint) > BigInt(MAX_POKEMON_ID)) : false}
+                isLoadingNextId={isLoadingNextTokenId}
+              />
+              <hr/>
               <h3>Your Pokémon Cards</h3>
               {(isLoadingBalance && !pokemonBalance) && <p>Loading your balance...</p>}
               {isLoadingTokenIds && <p>Fetching your token IDs...</p>}
@@ -3108,7 +3150,7 @@ function App() {
                 <>
                   <p>Your Card Balance: {pokemonBalance?.toString()}</p>
                   <div className="flex-wrap-container">
-                    {ownedPokemonDetails.map(pokemon => (
+                    {ownedPokemonDetails.map(pokemon => ( // Ensure key is unique
                       <div key={pokemon.tokenId} className="card" style={{ width: '220px' }}>
                         {pokemon.imageUrl && <img src={pokemon.imageUrl} alt={pokemon.name} style={{ maxWidth: '100%', height: 'auto', marginBottom: '5px' }} />}
                         <strong>{pokemon.name} (ID: {pokemon.tokenId})</strong>
@@ -3192,18 +3234,10 @@ function App() {
                 !isLoadingTokenIds && !fetchTokenIdsError && <p>You don't own any Pokémon NFTs yet. Try minting one!</p>
               )}
             </div>
-
-            {/* Transaction Status Area */}
-            {currentActionInfo.type && (isWritePending || isConfirming || writeTxHash) && (
-              <div className="transaction-status-area">
-                <h4>Transaction: {currentActionInfo.type} {currentActionInfo.tokenId || currentActionInfo.details || ''}</h4>
-                {isWritePending && <p>Please confirm in your wallet...</p>}
-                {writeTxHash && !isConfirming && <p>Transaction sent (Hash: {writeTxHash.substring(0,10)}...). Waiting for confirmation...</p>}
-                {isConfirming && <p>Confirming transaction (Hash: {writeTxHash?.substring(0,10)}...)...</p>}
-              </div>
             )}
+
+            {activeSection === 'marketplace' && (
             <div className="section-container">
-              <hr />
               <h2>Marketplace Listings</h2>
               <button onClick={() => setRefreshMarketplaceTrigger(prev => prev + 1)} disabled={isLoadingMarketplace}>
                 {isLoadingMarketplace ? 'Refreshing Marketplace...' : 'Refresh Marketplace'}
@@ -3254,10 +3288,10 @@ function App() {
                 </div>
               )}
             </div>
+            )}
 
-            {/* Active Auctions Section */}
+            {activeSection === 'auctions' && (
             <div className="section-container">
-              <hr />
               <h2>Active Auctions</h2>
               <button onClick={() => setRefreshAuctionsTrigger(prev => prev + 1)} disabled={isLoadingAuctions}>
                 {isLoadingAuctions ? 'Refreshing Auctions...' : 'Refresh Auctions'}
@@ -3325,7 +3359,47 @@ function App() {
                 </div>
               )}
             </div>
-          </div> {/* End of main content div for connected state */}
+            )}
+            
+            {/* Admin Panel - Rendered based on activeSection and ownership */}
+            {activeSection === 'admin' && contractOwner && account.address?.toLowerCase() === contractOwner.toLowerCase() && (
+              <div className="admin-panel">
+                <h2>👑 Admin Panel (PokemonCard Contract)</h2>
+                <p style={{color: '#1a237e'}}>Contract Owner: <strong style={{color: '#0d47a1'}}>{contractOwner}</strong></p>
+                <p><small style={{color: '#555'}}>This panel is exclusively for you, the contract owner.</small></p>
+
+                <div style={{ marginTop: '15px' }}>
+                  <h4>Manage Minter Addresses</h4>
+                  <input
+                    type="text"
+                    placeholder="Enter Address (0x...)"
+                    value={minterAddressInput}
+                    onChange={(e) => setMinterAddressInput(e.target.value)}
+                    style={{ marginRight: '10px', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '300px' }}
+                  />
+                  <button onClick={() => handleSetMinter(minterAddressInput, true)} disabled={!minterAddressInput || ((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue')} style={{ backgroundColor: '#28a745' }}> {/* Green for add */}
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue') ? 'Adding...' : 'Add as Minter'}
+                  </button>
+                  <button onClick={() => handleSetMinter(minterAddressInput, false)} disabled={!minterAddressInput || ((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse')} style={{ backgroundColor: '#dc3545' }}> {/* Red for remove */}
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse') ? 'Removing...' : 'Remove Minter'}
+                  </button>
+                  {setMinterStatus && <p><small style={{color: setMinterStatus.includes('✅') ? 'green' : (setMinterStatus.includes('⚠️') ? 'red' : '#333')}}>{setMinterStatus}</small></p>}
+                </div>
+
+                <div style={{ marginTop: '20px' }}>
+                  <h4>Current Authorized Minters:</h4>
+                  {isLoadingMinters && <p>Loading minters list...</p>}
+                  {mintersError && <p style={{ color: 'red' }}>{mintersError}</p>}
+                  {!isLoadingMinters && !mintersError && currentMinters.length === 0 && <p style={{fontStyle: 'italic'}}>No addresses are currently authorized as minters.</p>}
+                  {!isLoadingMinters && !mintersError && currentMinters.length > 0 && (
+                    <ul style={{ listStyleType: 'disc', paddingLeft: '20px' }}>{currentMinters.map(minter => <li key={minter}><small style={{fontFamily: 'monospace'}}>{minter}</small></li>)}</ul>
+                  )}
+                  <button onClick={() => setRefreshMintersTrigger(p => p + 1)} disabled={isLoadingMinters} style={{ marginTop: '10px' }}>Refresh Minters List</button>
+                </div>
+              </div>
+            )}
+
+          {/* End of main content div for connected state */}
         </>
       )}
       {!currentNetworkConfig && account.status === 'connected' && (
@@ -3335,48 +3409,7 @@ function App() {
         </p>
       )}
 
-      {/* Admin Panel for PokemonCard Contract Owner */}
-      {account.status === 'connected' && POKEMON_CARD_ADDRESS && contractOwner && account.address?.toLowerCase() === contractOwner.toLowerCase() && (
-        <>
-          <div className="admin-panel">
-            <h2>👑 Admin Panel (PokemonCard Contract)</h2>
-            <p style={{color: '#1a237e'}}>Contract Owner: <strong style={{color: '#0d47a1'}}>{contractOwner}</strong></p>
-            <p><small style={{color: '#555'}}>This panel is exclusively for you, the contract owner.</small></p>
-
-            <div style={{ marginTop: '15px' }}>
-              <h4>Manage Minter Addresses</h4>
-              <input
-                type="text"
-                placeholder="Enter Address (0x...)"
-                value={minterAddressInput}
-                onChange={(e) => setMinterAddressInput(e.target.value)}
-                style={{ marginRight: '10px', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '300px' }}
-              />
-              <button onClick={() => handleSetMinter(minterAddressInput, true)} disabled={!minterAddressInput || ((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue')} style={{ backgroundColor: '#28a745' }}> {/* Green for add */}
-                {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue') ? 'Adding...' : 'Add as Minter'}
-              </button>
-              <button onClick={() => handleSetMinter(minterAddressInput, false)} disabled={!minterAddressInput || ((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse')} style={{ backgroundColor: '#dc3545' }}> {/* Red for remove */}
-                {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse') ? 'Removing...' : 'Remove Minter'}
-              </button>
-              {setMinterStatus && <p><small style={{color: setMinterStatus.includes('✅') ? 'green' : (setMinterStatus.includes('⚠️') ? 'red' : '#333')}}>{setMinterStatus}</small></p>}
-            </div>
-
-            <div style={{ marginTop: '20px' }}>
-              <h4>Current Authorized Minters:</h4>
-              {isLoadingMinters && <p>Loading minters list...</p>}
-              {mintersError && <p style={{ color: 'red' }}>{mintersError}</p>}
-              {!isLoadingMinters && !mintersError && currentMinters.length === 0 && <p style={{fontStyle: 'italic'}}>No addresses are currently authorized as minters.</p>}
-              {!isLoadingMinters && !mintersError && currentMinters.length > 0 && (
-                <ul style={{ listStyleType: 'disc', paddingLeft: '20px' }}>{currentMinters.map(minter => <li key={minter}><small style={{fontFamily: 'monospace'}}>{minter}</small></li>)}</ul>
-              )}
-              <button onClick={() => setRefreshMintersTrigger(p => p + 1)} disabled={isLoadingMinters} style={{ marginTop: '10px' }}>Refresh Minters List</button>
-            </div>
-          </div>
-        </>
-      )}
-
-    </div> {/* End of centered content div */}
-  </>
+    </div>
   )
 }
 
