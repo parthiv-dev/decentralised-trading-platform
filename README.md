@@ -155,6 +155,22 @@ We used Github Co-Pilot, Gemini and ChatGPT for various tasks:
 
 We did not use or barely used GenAI for:
 - Implementing the actual contracts e.g. PokemonCard.sol
+- Writing this extensive [README](README.md)
+- Finding the key learning and implementation objectives to be completed in the coursework
+
+## Code Quality
+
+TODO for 4.2 Code Quality Standards:
+- minimization of code redundancy
+- proper implementation
+of design patterns
+- code readability and organization
+- quality of comments and documentation
+- test coverage
+- follow [Official Solidity style guide](https://soliditylang.org/)
+- Proper error handling throughout codebase
+
+We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from [OpenZeppelins]()
 
 ## Conclusion
 
@@ -162,11 +178,4 @@ TODO for 2. Learning Objectives:
 - Web3-integrated frontend applications
 - Security best practices in DeFi development
 - Understanding NFT standards + token economics
-
-
-
-
-
- 
-
 
