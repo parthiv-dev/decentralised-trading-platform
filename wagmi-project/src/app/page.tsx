@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react' // Added useRef
 import {
   useAccount,
   useConnect,
@@ -11,8 +11,9 @@ import {
   useWaitForTransactionReceipt,
   useBalance, // For displaying ETH balance if needed, not directly for contract interaction here
   usePublicClient, // To get a public client for read operations
-} from 'wagmi'
-import { parseEther, formatEther } from 'viem' // For converting ETH values
+  useWatchContractEvent, // For listening to contract events
+} from 'wagmi';
+import { parseEther, formatEther, parseAbiItem } from 'viem'; // For converting ETH values and parsing event ABI
 
 // --- IMPORTANT: REPLACE THESE WITH YOUR ACTUAL ABIs ---
 const pokemonCardAbi = [
@@ -1743,9 +1744,29 @@ function App() {
   const [mintStatus, setMintStatus] = useState('');
   const [approveStatus, setApproveStatus] = useState('');
   const [listStatus, setListStatus] = useState('');
+  const [burnStatus, setBurnStatus] = useState('');
   const [isLoadingTokenIds, setIsLoadingTokenIds] = useState(false);
   const [fetchTokenIdsError, setFetchTokenIdsError] = useState<string | null>(null);
   const publicClient = usePublicClient();
+
+  // To keep track of processed event logs for ItemSold
+  const processedItemSoldLogIds = useRef(new Set<string>());
+
+  // Marketplace State
+  interface MarketplaceItem {
+    listingId: string;
+    seller: `0x${string}`;
+    tokenId: string;
+    price: string; // Formatted ETH
+    priceInWei: bigint;
+    tokenURI?: string;
+    tokenMetadata?: { name?: string; image?: string; description?: string };
+  }
+  const [marketplaceListings, setMarketplaceListings] = useState<MarketplaceItem[]>([]);
+  const [isLoadingMarketplace, setIsLoadingMarketplace] = useState(false);
+  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
+  const [buyStatus, setBuyStatus] = useState('');
+  const [refreshMarketplaceTrigger, setRefreshMarketplaceTrigger] = useState(0);
 
   // Determine current network's contract addresses
   const currentNetworkConfig = account.chainId ? contractAddresses[account.chainId as keyof typeof contractAddresses] : null;
@@ -1764,9 +1785,7 @@ function App() {
     address: POKEMON_CARD_ADDRESS,
     functionName: 'balanceOf',
     args: [account.address!], // Ensure account.address is defined
-    query: {
-      enabled: !!account.address && !!POKEMON_CARD_ADDRESS, // Only run if address and contract address are available
-    },
+    enabled: !!account.address && !!POKEMON_CARD_ADDRESS, // Only run if address and contract address are available
   });
 
   // Read user's Pokemon token IDs (more complex due to loop in old code)
@@ -1811,9 +1830,6 @@ function App() {
           }
         }
         setUserPokemonIds(ids);
-        if (ids.length > 0 && !listTokenId) {
-          setListTokenId(ids[0]); // Default to first token
-        }
       } catch (e: any) {
         console.error("Error fetching token IDs:", e);
         setFetchTokenIdsError(`Failed to fetch token IDs: ${e.message || 'Unknown error'}`);
@@ -1823,14 +1839,26 @@ function App() {
       }
     };
 
-    if (account.status === 'connected' && POKEMON_CARD_ADDRESS) {
+    if (account.status === 'connected' && POKEMON_CARD_ADDRESS && publicClient) {
       fetchTokenIds();
     } else {
       setUserPokemonIds([]);
       setIsLoadingTokenIds(false);
       setFetchTokenIdsError(null);
     }
-  }, [pokemonBalance, account.address, POKEMON_CARD_ADDRESS, account.status, publicClient, listTokenId]);
+  }, [pokemonBalance, account.address, POKEMON_CARD_ADDRESS, account.status, publicClient]);
+
+  // Effect to update the default selected token ID when the list of user's tokens changes
+  useEffect(() => {
+    if (userPokemonIds.length > 0) {
+      // If listTokenId is not set, or if the currently set listTokenId is no longer in userPokemonIds
+      if (!listTokenId || !userPokemonIds.includes(listTokenId)) {
+        setListTokenId(userPokemonIds[0]); // Default to the first token
+      }
+    } else {
+      setListTokenId(''); // Clear selection if no tokens
+    }
+  }, [userPokemonIds]); // This effect only runs when userPokemonIds changes
 
   // Check if the selected token is approved for the marketplace
   const { data: approvedAddress, refetch: refetchApprovalStatus, isLoading: isLoadingApprovalStatus } = useReadContract({
@@ -1838,9 +1866,7 @@ function App() {
     address: POKEMON_CARD_ADDRESS,
     functionName: 'getApproved',
     args: [listTokenId ? BigInt(listTokenId) : BigInt(0)], // Pass a valid BigInt, even if 0
-    query: {
-      enabled: !!listTokenId && !!POKEMON_CARD_ADDRESS && !!TRADING_PLATFORM_ADDRESS,
-    },
+    enabled: !!listTokenId && !!POKEMON_CARD_ADDRESS && !!TRADING_PLATFORM_ADDRESS, // `enabled` is a top-level option
   });
 
   useEffect(() => {
@@ -1904,7 +1930,7 @@ function App() {
       await writeContractAsync({
         abi: tradingPlatformAbi,
         address: TRADING_PLATFORM_ADDRESS,
-        functionName: 'listCardForSale',
+        functionName: 'listItem',
         args: [BigInt(listTokenId), priceInWei],
       });
     } catch (e: any) {
@@ -1912,6 +1938,188 @@ function App() {
       console.error(e);
     }
   };
+
+  const handleBuyItem = async (listingId: string, priceInWei: bigint) => {
+    if (!TRADING_PLATFORM_ADDRESS || !account.address) {
+      alert("Please connect your wallet and ensure contract addresses are available.");
+      return;
+    }
+    setBuyStatus(`Buying item ${listingId}...`);
+    try {
+      await writeContractAsync({
+        abi: tradingPlatformAbi,
+        address: TRADING_PLATFORM_ADDRESS,
+        functionName: 'buyItem',
+        args: [BigInt(listingId)],
+        value: priceInWei, // Send ETH with the transaction
+      });
+    } catch (e: any) {
+      setBuyStatus(`Buy failed for item ${listingId}: ${e.shortMessage || e.message}`);
+      console.error(e);
+    }
+  };
+
+  const handleBurn = async (tokenIdToBurn: string) => {
+    if (!POKEMON_CARD_ADDRESS || !account.address) {
+      alert("Please connect your wallet and ensure contract addresses are available.");
+      return;
+    }
+    setBurnStatus(`Burning token ${tokenIdToBurn}...`);
+    try {
+      await writeContractAsync({
+        abi: pokemonCardAbi,
+        address: POKEMON_CARD_ADDRESS,
+        functionName: 'burn',
+        args: [BigInt(tokenIdToBurn)],
+      });
+    } catch (e: any) {
+      setBurnStatus(`Burn failed for token ${tokenIdToBurn}: ${e.shortMessage || e.message}`);
+      console.error(e);
+    }
+  };
+
+
+ // Watch for ItemSold events to notify the seller
+ useWatchContractEvent({
+  address: TRADING_PLATFORM_ADDRESS,
+  abi: tradingPlatformAbi,
+  eventName: 'ItemSold',
+  enabled: !!TRADING_PLATFORM_ADDRESS && !!account.address, // Only watch when relevant data is available
+  onLogs(logs) {
+    console.log('[Event Watcher] ItemSold logs received:', logs);
+    logs.forEach(log => {
+      // Create a unique ID for this specific log emission
+      const logId = `${log.transactionHash}-${log.logIndex}`;
+
+      // Check if this log has already been processed
+      if (processedItemSoldLogIds.current.has(logId)) {
+        // console.log(`[Event Watcher] Log ${logId} (ItemSold) already processed. Skipping.`);
+        return;
+      }
+
+      // Type assertion for log.args, ensure it matches your event structure
+      const args = log.args as { listingId?: bigint; buyer?: `0x${string}`; seller?: `0x${string}`; tokenId?: bigint; price?: bigint };
+      if (args.seller && account.address && args.seller.toLowerCase() === account.address.toLowerCase()) {
+        // This user is the seller of the item that was just sold
+        const message = `🎉 Your item (Token ID: ${args.tokenId?.toString()}) was sold for ${args.price ? formatEther(args.price) : 'N/A'} ETH! Listing ID: ${args.listingId?.toString()}`;
+        
+        // Mark this log as processed BEFORE showing the alert
+        processedItemSoldLogIds.current.add(logId);
+        
+        alert(message); // Simple alert for now, could be a more sophisticated notification
+        console.log(message);
+
+        // Optionally, trigger a refresh of data relevant to the seller
+        refetchBalance(); // Seller's ETH balance might change due to pending withdrawals
+        setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh general marketplace view
+      }
+    });
+  },
+});
+
+  // Effect to fetch marketplace listings
+  useEffect(() => {
+    const fetchListings = async () => {
+      if (!publicClient || !TRADING_PLATFORM_ADDRESS || !POKEMON_CARD_ADDRESS) {
+        setMarketplaceListings([]);
+        return;
+      }
+      setIsLoadingMarketplace(true);
+      setMarketplaceError(null);
+      try {
+        const itemListedLogs = await publicClient.getLogs({
+          address: TRADING_PLATFORM_ADDRESS,
+          event: parseAbiItem('event ItemListed(uint256 indexed listingId, address indexed seller, uint256 indexed tokenId, uint256 price)'),
+          fromBlock: 0n, // Consider a more recent block for performance in production
+        });
+
+        if (!itemListedLogs || itemListedLogs.length === 0) {
+          setMarketplaceListings([]);
+          setIsLoadingMarketplace(false);
+          return;
+        }
+
+        const uniqueListingIds = [...new Set(itemListedLogs.map(log => log.args.listingId!))];
+
+        let processedListingDetails: Array<{ status: 'success' | 'failure', result?: readonly [ `0x${string}`, bigint, bigint, boolean ], error?: Error, originalListingId: bigint }> = [];
+
+
+        // The chain does not have the contract "multicall3" configured. Version: viem@2.29.0
+
+        if (account.chainId === 31337 && publicClient) { // Hardhat chain ID
+          console.log("[Marketplace] Using sequential calls for Hardhat network to fetch listing details.");
+          for (const id of uniqueListingIds) {
+            try {
+              const result = await publicClient.readContract({
+                abi: tradingPlatformAbi,
+                address: TRADING_PLATFORM_ADDRESS!,
+                functionName: 'getListing',
+                args: [id],
+              });
+              processedListingDetails.push({ status: 'success', result, originalListingId: id });
+            } catch (e: any) {
+              console.warn(`[Marketplace] Failed to fetch listing ${id} sequentially:`, e);
+              processedListingDetails.push({ status: 'failure', error: e, originalListingId: id });
+            }
+          }
+        } else if (publicClient) {
+          console.log("[Marketplace] Using multicall for non-Hardhat network to fetch listing details.");
+          const listingDetailsContracts = uniqueListingIds.map(id => ({
+            abi: tradingPlatformAbi,
+            address: TRADING_PLATFORM_ADDRESS!,
+            functionName: 'getListing',
+            args: [id] as const, // Ensure args are const-asserted for multicall
+          }));
+          const multicallResults = await publicClient.multicall({ contracts: listingDetailsContracts, allowFailure: true });
+          processedListingDetails = multicallResults.map((res, index) => ({ ...res, originalListingId: uniqueListingIds[index] }));
+        }
+
+        const activeListingsData = processedListingDetails
+          .map((res, index) => ({ ...res, originalListingId: uniqueListingIds[index] }))
+          .filter(res => res.status === 'success' && res.result && (res.result as any)[3] === true) // result[3] is 'active'
+          .map(res => ({
+            listingId: res.originalListingId!.toString(),
+            seller: (res.result as any)![0] as `0x${string}`,
+            tokenId: ((res.result as any)![1] as bigint).toString(),
+            priceInWei: (res.result as any)![2] as bigint,
+          }));
+
+        if (activeListingsData.length === 0) {
+          setMarketplaceListings([]);
+          setIsLoadingMarketplace(false);
+          return;
+        }
+
+        const listingsWithMetadataPromises = activeListingsData.map(async (listing) => {
+          let tokenMetadata, tokenURIStr = '';
+          // Simplified metadata fetching for brevity - in real app, handle IPFS, batching, etc.
+          // This part can be expanded significantly.
+          return { ...listing, price: formatEther(listing.priceInWei), tokenURI: tokenURIStr, tokenMetadata };
+        });
+
+        const finalMarketplaceListings = await Promise.all(listingsWithMetadataPromises);
+        setMarketplaceListings(finalMarketplaceListings);
+      } catch (error: any) {
+        setMarketplaceError(`Failed to load marketplace: ${error.message}`);
+        setMarketplaceListings([]);
+      } finally {
+        setIsLoadingMarketplace(false);
+      }
+    };
+    fetchListings();
+  }, [account.status, TRADING_PLATFORM_ADDRESS, POKEMON_CARD_ADDRESS, publicClient, refreshMarketplaceTrigger]);
+
+  // Effect for auto-refreshing marketplace listings periodically
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log('[Marketplace Auto-Refresh] Triggering marketplace refresh.');
+      setRefreshMarketplaceTrigger(prev => prev + 1);
+    }, 30000); // Refresh every 30 seconds
+
+    return () => {
+      clearInterval(intervalId); // Clear interval on component unmount
+    };
+  }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
 
   // Effect to handle transaction confirmation feedback and refetch data
   useEffect(() => {
@@ -1927,32 +2135,54 @@ function App() {
       }
       if (listStatus.includes('Listing')) {
         setListStatus(`✅ Token ${listTokenId} listed!`);
-        // TODO: Refresh marketplace listings (not implemented in this snippet)
-        // For now, could also refetch user's tokens if listing removes it from their direct view
-        // refetchBalance(); // If listing affects user's direct balance view
+        // After listing, the token is still owned by the user but is approved and marked as listed in the platform.
+        // We should re-check its approval status and potentially refresh the list of owned tokens,
+        // especially if the UI logic changes to filter out or differently display listed tokens.
+        refetchApprovalStatus();
+        refetchBalance(); // This will re-trigger fetching token IDs.
+        setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
+      }
+      if (buyStatus.includes('Buying')) {
+        setBuyStatus(`✅ Item bought successfully!`);
+        setRefreshMarketplaceTrigger(prev => prev + 1); // Refresh marketplace
+        refetchBalance(); // Buyer's NFT balance and ETH balance changed
+      }
+      if (burnStatus.includes('Burning')) {
+        setBurnStatus(`✅ Token burned successfully!`);
+        refetchBalance(); // Refresh user's NFT list
+        // If the burned token was selected for listing, clear it
       }
       // Reset generic statuses after a short delay
       setTimeout(() => {
         if (mintStatus.includes('successful')) setMintStatus('');
         if (approveStatus.includes('approved')) setApproveStatus('');
         if (listStatus.includes('listed')) setListStatus('');
+        if (buyStatus.includes('successful')) setBuyStatus('');
+        if (burnStatus.includes('successfully')) setBurnStatus('');
       }, 4000);
     } else if (confirmationError) {
         const errorMsg = `⚠️ Transaction failed: ${confirmationError.shortMessage || confirmationError.message}`;
         if (mintStatus.includes('Minting')) setMintStatus(errorMsg);
         if (approveStatus.includes('Approving')) setApproveStatus(errorMsg);
         if (listStatus.includes('Listing')) setListStatus(errorMsg);
+        if (buyStatus.includes('Buying')) setBuyStatus(errorMsg);
+        if (burnStatus.includes('Burning')) setBurnStatus(errorMsg);
 
         // Clear error messages after a longer delay
         setTimeout(() => {
           if (mintStatus.includes('failed')) setMintStatus('');
           if (approveStatus.includes('failed')) setApproveStatus('');
           if (listStatus.includes('failed')) setListStatus('');
+          if (buyStatus.includes('failed')) setBuyStatus('');
+          if (burnStatus.includes('failed')) setBurnStatus('');
         }, 7000);
     }
   // Dependencies for reacting to transaction state changes.
   // Status messages (mintStatus, etc.) are set inside, so they are not dependencies here.
-  }, [isConfirmed, receipt, confirmationError, listTokenId, refetchBalance, refetchApprovalStatus]);
+  // `listTokenId` is included because it's used in status messages.
+  // `refetchBalance` and `refetchApprovalStatus` are stable functions from wagmi hooks.
+  // The actual status strings are included to ensure the effect re-evaluates if a similar action is retried.
+  }, [isConfirmed, receipt, confirmationError, listTokenId, refetchBalance, refetchApprovalStatus, mintStatus, approveStatus, listStatus, buyStatus, burnStatus]);
 
   return (
     <>
@@ -2017,7 +2247,20 @@ function App() {
               {!isLoadingBalance && !isLoadingTokenIds && !fetchTokenIdsError && userPokemonIds.length > 0 ? (
                 <>
                   <p>IDs: {userPokemonIds.join(', ')} (Balance: {pokemonBalance?.toString()})</p>
-                  <h4>List a Card for Sale</h4>
+                  <div>
+                    {userPokemonIds.map(id => (
+                      <button
+                        key={`burn-${id}`}
+                        onClick={() => handleBurn(id)}
+                        disabled={isWritePending || isConfirming || (burnStatus.includes('Burning') && burnStatus.includes(id))}
+                        style={{ marginRight: '5px', marginBottom: '5px' }}
+                      >
+                        { (isWritePending && burnStatus.includes(id)) ? 'Sending...' : (isConfirming && burnStatus.includes(id)) ? 'Confirming Burn...' : `Burn Token ${id}` }
+                      </button>
+                    ))}
+                    {burnStatus && <p><small>{burnStatus}</small></p>}
+                  </div>
+                  <h4 style={{marginTop: '15px'}}>List a Card for Sale</h4>
                   <label htmlFor="token-select">Token ID: </label>
                   <select id="token-select" value={listTokenId} onChange={(e) => setListTokenId(e.target.value)}>
                     {userPokemonIds.map(id => <option key={id} value={id}>{id}</option>)}
@@ -2063,6 +2306,59 @@ function App() {
               </div>
             )}
             <div>
+              <hr style={{ margin: '20px 0' }} />
+              <h2>Marketplace Listings</h2>
+              <button onClick={() => setRefreshMarketplaceTrigger(prev => prev + 1)} disabled={isLoadingMarketplace}>
+                {isLoadingMarketplace ? 'Refreshing Marketplace...' : 'Refresh Marketplace'}
+              </button>
+
+              {/* Display loading or error messages */}
+              {/* The "Refreshing..." message will show above the list if it's a refresh */}
+              {isLoadingMarketplace && marketplaceListings.length > 0 && <p>Refreshing marketplace data...</p>}
+              {/* The "Loading..." message will show if it's an initial load (no items yet) */}
+              {isLoadingMarketplace && marketplaceListings.length === 0 && <p>Loading marketplace...</p>}
+              {marketplaceError && <p style={{ color: 'red' }}>{marketplaceError}</p>}
+
+              {/* Display "No items" message only if not loading, no error, and list is truly empty */}
+              {!isLoadingMarketplace && !marketplaceError && marketplaceListings.length === 0 &&  (
+                <p>No items currently listed in the marketplace.</p>
+              )}
+
+              {/* Display the list if it has items. Apply opacity effect during refresh. */}
+              {/* This section will remain visible even if isLoadingMarketplace is true, showing old items until new ones arrive. */}
+              {marketplaceListings.length > 0 && (
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '20px',
+                  marginTop: '10px',
+                  opacity: isLoadingMarketplace ? 0.6 : 1, // Fade slightly during refresh
+                  transition: 'opacity 0.3s ease-in-out', // Smooth transition for opacity
+                }}>
+                  {marketplaceListings.map((item) => (
+                    <div key={item.listingId} style={{ border: '1px solid #ccc', padding: '15px', width: '250px' }}>
+                      {/* Basic metadata display - enhance this */}
+                      {item.tokenMetadata?.image && <img src={item.tokenMetadata.image.replace('ipfs://', 'https://ipfs.io/ipfs/')} alt={item.tokenMetadata.name || `Token ${item.tokenId}`} style={{ maxWidth: '100%', height: 'auto' }} />}
+                      <h4>{item.tokenMetadata?.name || `Token ID: ${item.tokenId}`}</h4>
+                      <p>Listing ID: {item.listingId}</p>
+                      <p>Price: {item.price} ETH</p>
+                      <p><small>Seller: {item.seller === account.address ? 'You' : item.seller}</small></p>
+                      {item.seller !== account.address && (
+                        <button
+                          onClick={() => handleBuyItem(item.listingId, item.priceInWei)}
+                          disabled={isWritePending || isConfirming || (buyStatus.includes('Buying') && buyStatus.includes(item.listingId))}
+                        >
+                          {(isWritePending && buyStatus.includes(item.listingId)) ? 'Sending...' :
+                           (isConfirming && buyStatus.includes(item.listingId)) ? 'Confirming Buy...' :
+                           (buyStatus.includes(item.listingId) && buyStatus.includes('failed')) ? 'Buy Failed - Retry?' :
+                           'Buy Now'}
+                        </button>
+                      )}
+                      {buyStatus.includes(item.listingId) && !buyStatus.includes('Buying') && <p><small>{buyStatus.replace(`item ${item.listingId}`, 'this item')}</small></p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </>
