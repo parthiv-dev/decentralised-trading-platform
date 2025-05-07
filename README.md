@@ -16,14 +16,6 @@ of design patterns
 - Proper error handling throughout codebase
 
 
-
-
-
-
-
-
-
-
 ## Table of Contents
 TODO
 
@@ -103,6 +95,22 @@ We implment two Solidity contracts:
 
 #### TradingPlatform Contract
 
+TODO for 3.1. Smart Contracts:
+- NFT contract for Pokemon cards following ERC271 contract
+- Comprehensive metadata for Pokemon characteristics
+- Secure minting functionalities
+- Access control
+
+- Card listing
+- Fixed-price sales
+- Auctions
+- Secure withdrawal patterns
+- Understanding of smart contract optimization
+- Security best practices in implementation
+- Simplicity
+
+The [TradingPlatform.sol](contracts\TradingPlatform.sol) is as the name says a contract for the trading plaform where tokens can be listed for selling, auctioned and bought. Additionally, users are able to securily their earned funds (by buying and selling NFT tokens) to their wallet (Metamask). 
+
 [TradingPlatform.sol](contracts\TradingPlatform.sol) incoporates [PokemonCard.sol](contracts\PokemonCard.sol) in the sense that one first deploys [PokemonCard.sol](contracts\PokemonCard.sol), receives its contract address and then calls (the constructor of) [TradingPlatform.sol](contracts\TradingPlatform.sol), giving the contract address of [PokemonCard.sol](contracts\PokemonCard.sol) as an input. Furthermore, [TradingPlatform.sol](contracts\TradingPlatform.sol) calls several functions of [PokemonCard.sol](contracts\PokemonCard.sol) in its own functions. 
 
 
@@ -135,11 +143,29 @@ To be able to view images of pokemons on the web-based trading trading platform 
 
 First, we searched for a complete data set of open-source Pokemon pictures. We found a [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) with 898 images of all the Pokemons taken from the Pokedex database. Each image is of the format "name.png". We decide that we want to work with the first 100 (alphabetic) Pokemons for simplicty. 
 
-For additional metadata for each Pokemon we referred to the [PokeApi](https://pokeapi.co/). We wrote a [Python script](data\pokemon_get_data.py) which gets the metadata based on the filenames of the kaggle image data set and stores the data for each Pokemon in JSON files of [OpenSea format](https://docs.opensea.io/docs/metadata-standards). The files are purposefully name as "1.json", "2.json" etc. for simplicity later on when we call the files based on the tokenId of the respective pokemon mint.
+We also renamed the original image files from the [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) to "1.png", "2.png" etc. for simplicity later on when we call the files based on the tokenId of the respective pokemon mint. This was done using a [Python script](data\pokemon_images\number_img.py). We then uploaded the [folder](data\pokemon_images\byNumber) consisting of the 100 numbered images to the [Pinata Cloud](https://pinata.cloud/) for easy access when minting on the blockchain.
 
-We also rename the original image files from the [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) to "1.png", "2.png" etc. for same reason as before using a [Python script](data\pokemon_images\number_img.py). We then uploaded the [folder](data\pokemon_images\byNumber) consisting of the 100 numbered images to the [Pinata Cloud](https://pinata.cloud/) for easy access when minting on the blockchain.
+For additional metadata for each Pokemon we referred to the [PokeApi](https://pokeapi.co/). We wrote a [Python script](data\pokemon_get_data.py) which gets the metadata based on the filenames of the kaggle image data set and stores the data (numerical and non-numerical charecteristics, and the IPFS link for each image) for each Pokemon in JSON files of [OpenSea format](https://docs.opensea.io/docs/metadata-standards). The files are purposefully name as "1.json", "2.json" etc. for same reason as before. The [folder](data\pokemon_metadata) with the JSON files was also uploaded to the [Pinata Cloud](https://pinata.cloud/).
 
-[Pinata Cloud](https://pinata.cloud/) is a 
+
+[Pinata Cloud](https://pinata.cloud/) is a distributed storage platform used e.g. OpenSea to achieve secure, scalable storage with IPFS's decentralized infrastructure.
+
+IMPORTANT NOTE: Since we integreated metadata storage through IPFS there was no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts\PokemonCard.sol)! For simplicity and clarity the Pokemon struct and associated functions where removed. For reference this was the original Pokemon struct:
+
+```
+    struct Pokemon {
+        string name;
+        uint256 hp;
+        uint256 attack;
+        uint256 defense;
+        uint256 speed;
+        string type1;
+        string type2;
+        uint256 special;
+    }
+```
+
+This struct was populated when minting a Pokemon NFT token by the constructor.
 
 ## Demonstration
 
@@ -153,9 +179,16 @@ TODO for 6. Group Work Specifications
 - clear documentation required for individual contributions
 - distribution of work should be equitable and clearly documented in the project submissions
 
+We worked closely together, spending hours on Discord calls to collaborate on this project.
+
 Matteo:
+- Leading frontend development ()
+- Leading making of demonstration video
 
 Parthiv:
+- Leading backend (Solidity contracts, IPFS integration for metadata storage)
+- Leading documentation of codebase and ensuring code quality
+- Leading documentation of work in [README](README.md) and [WIKI](WIKI.md)
 
 ## Use of GenAI
 TODO for 8. Use of GenAI:
@@ -185,7 +218,7 @@ of design patterns
 - follow [Official Solidity style guide](https://soliditylang.org/)
 - Proper error handling throughout codebase
 
-We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from OpenZeppelin's way of commenting e.g. [here]() (TODO).
+We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from OpenZeppelin's way of commenting e.g. [here](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol).
 
 
 
