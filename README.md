@@ -47,7 +47,7 @@ In this project, we developed a decentralised application (dApp) for trading Pok
 
 In this [README](README.md) we explain how set up and use our trading platform in [Setup Instructions](#setup-instructions) a provide a [technical documentation](#technical-documentation) of individual files (the essential part of every README). 
 
-We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve deeper into our design choices and overall work process. We aim to allow the reader hopefully better understand design choices.
+We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve deeper into our overall work process.
 
 ## Setup Instructions
 
@@ -306,7 +306,7 @@ This struct was populated when minting a Pokemon NFT token by calling the constr
 
 #### TradingPlatform Contract
 
-The [TradingPlatform.sol](contracts/TradingPlatform.sol) is, as the name says, a contract for the trading platform. Tokens can be listed for **fixed-price sales** and **auctions**. Consequently, other users can buy and bid respectively. Additionally, users can securely **withdraw** their earned funds, which they have earned by (re-)selling NFT tokens, to their wallet.
+The [TradingPlatform.sol](contracts/TradingPlatform.sol) contract is, as the name says, a contract for the trading platform. Tokens can be listed for **fixed-price sales** and **auctions**. Consequently, other users can buy and bid respectively. Additionally, users can securely **withdraw** their earned funds, which they have earned by (re-)selling NFT tokens, to their wallet.
 
 We have implemented **best practices for security** by making use of existing OpenZeppelin contracts:
 - [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): To prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
@@ -360,10 +360,6 @@ We refer to section [Trading Platform](#6-trading-platform) for a complete overv
 
 ### Security Considerations
 
-- Protection against Reentrancy attacks (DONE)
-- Access control using function modifiers and role-based access where necessary (DONE)
-- IF front-running is a  concern (IS IT?) => a front-running prevention, e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive operations (NOT DONE)
-
 As mentioned in section on the [TradingPlatform Contract](#tradingplatform-contract), we protected the trading platform against **reentrancy attacks** by making use of OpenZeppelin's [ReentrancyGuard](https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard).
 
 We also implement **access control** in [PokemonCard.sol](contracts/PokemonCard.sol) by using: 
@@ -404,8 +400,6 @@ IMPORTANT NOTE: Since we integrated metadata storage through IPFS, there was the
 This struct was populated  by the constructor when minting a Pokémon NFT token.
 
 ## Demonstration
-
-See [video]().
 
 See [Polybox Link](https://polybox.ethz.ch/index.php/s/9X9GFbmWcCxp6zm)
 
