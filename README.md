@@ -5,17 +5,6 @@ See TODO in each paragraph!
 
 **Have to implement AND explain each criteria in at least 1 paragraph**
 
-TODO for 4.2 Code Quality Standards:
-- minimization of code redundancy
-- proper implementation
-of design patterns
-- code readability and organization
-- quality of comments and documentation
-- test coverage
-- follow [Official Solidity style guide](https://soliditylang.org/)
-- Proper error handling throughout codebase
-
-
 ## Table of Contents
 TODO
 
@@ -24,17 +13,9 @@ TODO
 
 ## Introduction
 
-TODO for 1. Overview:
-- blockchain technology
--NFT concepts
-- Implementation of smart contracts
-- Frontend development
-- Web3 technologies integration
-- Completed function trading platform deployed on local testnet
+In this project, we developed a decentralized application (dApp) for trading Pokémon cards. The project integrates **blockchain technology** with **NFT concepts**, requiring implementation of [smart contracts](#smart-contracts), [frontend development](#frontend-development), and **Web3 technologies integration**. We deliver a complete, functional trading platform deployed on a local testnet. 
 
-In this project, we developed a decentralized application (dApp) for trading Pokémon cards. The project integrates **blockchain technology** with **NFT concepts**, requiring implementation of [smart contracts](#smart-contracts), [frontend development](#frontend-development), and Web3 technologies integration. We deliver a complete, functional trading platform deployed on a local testnet. 
-
-In this [README](README.md) we explain what our project does, how to use it and what the purpose of individual files are (the essential part of every README). 
+In this [README](README.md) we explain how set up and use our trading platform in [Setup Instructions](#setup-instructions) a provide a [technical documentation](#technical-documentation) of individual files (the essential part of every README). 
 
 We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve deeper into our design choices and overall work process. We aim to allow the reader hopefully better understand design choices.
 
@@ -43,7 +24,6 @@ We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve d
 To run the Pokémon Card dApp locally, follow the steps in this section.
 
 > Note: We faced some issues when trying to deploy and run on FireFox. We suggest that the user uses Chromium-based browsers.
-
 
 
 ### Prerequisites
@@ -187,11 +167,13 @@ At the very top you are going to see some basic account and wallet information. 
 
 Next you will see the title, as well as your Pokemon contract and Trading Platform contract address. 
 
-Underneath you will find 4 tabs(or 3 if you did not select account 0): 
+Underneath you will find following tabs: 
 - My Cards & Mint
 - Marketplace
 - Auctions
-- Admin Panel (only for the contract owber at address #0)
+- Admin Panel (only for the contract owner at address #0)
+
+We encourage the user to the test the intuitive functionalities of the trading platform without providing step-by-step instructions!
 
 #### My Cards & Mint
 
@@ -227,7 +209,9 @@ Here the owner of the contract can
 
 ### 7. Tests (Optional)
 
-In a new termninal, in the **project root**, run the contract tests:
+We have written a comprehensive test suite for both the [PokemonCard](#pokemoncard-contract) and the [TradingPlatform](#tradingplatform-contract) contract. You may find them in the [test](test) folder.
+
+In a new terminal, in the **project root**, run the contract tests:
 
 ```bash
 npx hardhat test
@@ -241,28 +225,20 @@ To batch mint Pokémon Card NFTs up to ID 100, run:
 npx hardhat run scripts/BatchMintFromIPFS.js --network localhost
 ```
 
-This script will mint all cards from ID 1 through 100 using metadata on IPFS.
+This script will mint all cards from ID 1 through 100 using metadata on IPFS. This will allow the user to view all 100 Pokemons on the trading platform without having to mint each one individually!
 
 
-## Architecture Overview + Technical Documentation
+## Technical Documentation
 
 ### Smart Contracts
 
 We implement two Solidity contracts:
-- [PokemonCard.sol](contracts\PokemonCard.sol): To **securely mint** Pokemon NFTs and store comprehensive **metadata** for pokemon characteristics
--  [TradingPlatform.sol](contracts\TradingPlatform.sol):
+- [PokemonCard.sol](contracts\PokemonCard.sol): To **securely mint** Pokemon NFTs and **store comprehensive metadata for pokemon characteristics**
+-  [TradingPlatform.sol](contracts\TradingPlatform.sol): To provide a trading platform for users to sell, auction and buy Pokemon NFTs.
+
+We have focussed on **simplicity** and intuitive understanding of the contracts by **minimizing code redundancy** and adding **meaningful comments** to each important section.
 
 #### PokemonCard Contract
-
-TODO for 3.1. Smart Contracts:
-- NFT contract for Pokemon cards following ERC271 contract (DONE)
-- Comprehensive metadata for Pokemon characteristics (DONE)
-- Secure minting functionalities
-- Access control (DONE)
-
-- Understanding of smart contract optimization
-- Security best practices in implementation
-- Simplicity
 
 [PokemonCard.sol](contracts\PokemonCard.sol) is a NFT contract for Pokemons based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition we used following extensions:
 
@@ -291,9 +267,9 @@ To be able to store **comprehensive metadata for Pokemon characteristics** we de
 This struct was populated when minting a Pokemon NFT token by calling constructor of [PokemonCard.sol](contracts\PokemonCard.sol). In addition, we stored the metadata and images of Pokemons in a decentralized IPFS. More on this in the section [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
 
 **Access control** is ensured by: 
-- the in-built Ownable (modifier)
-- an auxiliary mapping which maps user addresses to bool (true = allowed to mint; false = not allowed to mint)
-- a modifier onlyAuthorized which check if either of the above is true for a given user
+- the in-built `Ownable` (modifier)
+- an auxiliary mapping `_minters` which maps user addresses to bool (true = allowed to mint; false = not allowed to mint)
+- a modifier `onlyAuthorized` which check if either of the above is true for a given user
 
 **Secure minting** has been implemented by the use of the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721). Specifically we used the modified the `safeMint()` function.
 
@@ -312,13 +288,13 @@ TODO for 3.1. Smart Contracts:
 The [TradingPlatform.sol](contracts\TradingPlatform.sol) is as the name says a contract for the trading platform. tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users are able to securely withdraw their earned funds which they have earned by (re-)selling NFT tokens) to their wallet.
 
 We have implemented **best practices for security** by making use of existing OpenZeppelin contracts:
-- [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): to prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
-- [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721): A required interface of an ERC721 compliant contract.
-- ReentrancyGuard
+- [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): To prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
+- [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721): A required interface of an [ERC271 compliant contract](https://docs.openzeppelin.com/contracts/4.x/erc721).
+- [ReentrancyGuard](https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard): To Protects functions marked `nonReentrant` against reentrancy attacks.
 - [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts to pause the functionality marked as `whenNotPaused`. This is useful for emergency response when facing security issues.
 - `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
 
-> **Difference bettween ERC721 & IERC721**: [ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) is the actual implementation standard for non-fungible tokens (NFTs), defining the rules and functions a smart contract must implement. [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721), on the other hand, is the interface that specifies the functions and events expected to be present in a contract adhering to the ERC721 standard
+> **Difference bettween ERC721 & IERC721**: [ERC271](https://docs.openzeppelin.com/contracts/4.x/erc721) is the actual implementation standard for non-fungible tokens (NFTs), defining the rules and functions a smart contract must implement. [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721), on the other hand, is the interface that specifies the functions and events expected to be present in a contract adhering to the ERC721 standard
 
 ### Interaction between PokemonCard & TradingPlatform
 
@@ -336,15 +312,21 @@ TODO for 3.2 Front Development:
 TODO for 4.1 Development Environment:
 - development environment setup should be clearly documented to ensure reproducibility
 
+MATTEO!!!
+
 
 ### Security Considerations
 
-- Protection against Reentrancy attacks
-- Access control using function modifiers and role-base access where necessary
-- IF front-running is concern (IS IT?) => a front-running prevention e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive
-operations
+- Protection against Reentrancy attacks (DONE)
+- Access control using function modifiers and role-base access where necessary (DONE)
+- IF front-running is concern (IS IT?) => a front-running prevention e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive operations (NOT DONE)
 
-- 
+As mentioned in section on the [TradingPlatform Contract](#tradingplatform-contract), we protected the trading platform against **reentrancy attacks** by making use of OpenZeppelin's [ReentrancyGuard](https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard).
+
+We also implement **access control** in [PokemonCard.sol](contracts\PokemonCard.sol) by using: 
+- the in-built `Ownable` (modifier)
+- an auxiliary mapping `_minters` which maps user addresses to bool (true = allowed to mint; false = not allowed to mint)
+- a modifier `onlyAuthorized` which check if either of the above is true for a given user
 
 ### Advanced Enhancements
 
@@ -361,7 +343,7 @@ For additional metadata for each Pokemon we referred to the [PokeApi](https://po
 
 [Pinata Cloud](https://pinata.cloud/) is a distributed storage platform used e.g. OpenSea to achieve secure, scalable storage with IPFS's decentralized infrastructure.
 
-IMPORTANT NOTE: Since we integrated metadata storage through IPFS there was no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts\PokemonCard.sol)! For simplicity and clarity the Pokemon struct and associated functions where removed. For reference this was the original Pokemon struct:
+IMPORTANT NOTE: Since we integrated metadata storage through IPFS there was theoretically no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts\PokemonCard.sol) contract! For simplicity and clarity the Pokemon struct and associated functions where kept to enable proper functioning of the trading platform without IPFS integration. For reference this is the Pokemon struct:
 
 ```
     struct Pokemon {
@@ -376,7 +358,7 @@ IMPORTANT NOTE: Since we integrated metadata storage through IPFS there was no n
     }
 ```
 
-This struct was populated when minting a Pokemon NFT token by the constructor.
+This struct was populated  by the constructor when minting a Pokemon NFT token.
 
 ## Demonstration
 
@@ -431,6 +413,8 @@ of design patterns
 
 We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from OpenZeppelin's way of commenting e.g. [here](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol).
 
+We implemented extensive test coverage for both the PokemonCard and the TradingPlatform contracts in the [test folder](test) to ensure proper functionality of the whole trading system.
+
 
 
 
@@ -441,3 +425,5 @@ TODO for 2. Learning Objectives:
 - Web3-integrated frontend applications
 - Security best practices in DeFi development
 - Understanding NFT standards + token economics
+
+In this project we learned about Web3-integrated frontend applications, security best practices in DeFi development, and got an introduciton to NFT standards and token economics.
