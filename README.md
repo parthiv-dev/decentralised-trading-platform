@@ -29,7 +29,8 @@ To run the Pokémon Card dApp locally, follow the steps in this section.
 > - Setup Instructions (this page)
 > - A browser window with the MetaMask account open in full-window mode
 > - Terminal (with multiple tabs)
-> TODO: Insert Photo
+
+> ![alt text](screenshots_for_readme\image2.png)
 
 First, clone/unzip the project folder and perform the following commands in the **project root** directory:
 
@@ -110,7 +111,7 @@ Now do the following:
 
 > **Tip:** If the user would like to simulate the interactive multi-user functionalities, we recommend creating multiple browser profiles, a metamask wallet for each browser profile and opening instances of [http://localhost:3000](http://localhost:3000) in each browser profile:
 
-> TODO: Add picture
+> ![alt text](screenshots_for_readme\image.png)
 
 >**Note:** Having multiple browser profiles is not the same  as having browser windows!
 
