@@ -362,7 +362,7 @@ In our Pokémon NFT trading platform, wagmi plays an essential role by providing
 By integrating wagmi, our platform delivers a responsive, robust, and intuitive user experience, significantly improving interaction quality and making the trading of Pokémon NFTs enjoyable and seamless.
 
 
-We refer to section [Trading Platform](#6-trading-platform) for a complete overview of the interface.
+We refer to section [Trading Platform](#6-trading-platform) and the [demonstration video](https://polybox.ethz.ch/index.php/s/9X9GFbmWcCxp6zm) for a complete overview of the interface.
 
 
 ### Security Considerations
