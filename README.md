@@ -28,6 +28,12 @@ Matteo Pelossi & Parthiv Kangsabanik
     - [TradingPlatform Contract](#tradingplatform-contract)
   - [Interaction between PokemonCard & TradingPlatform](#interaction-between-pokemoncard--tradingplatform)
   - [Frontend Development](#frontend-development)
+    - [Integration with Wagmi](#integration-with-wagmi)
+    - [Wallet Connectivity](#wallet-connectivity)
+    - [Reading Contract Data](#reading-contract-data)
+    - [Writing to Smart Contracts](#writing-to-smart-contracts)
+    - [Transaction Handling and Confirmation](#transaction-handling-and-confirmation)
+    - [Event Listening](#event-listening)
   - [Security Considerations](#security-considerations)
   - [Advanced Enhancements](#advanced-enhancements)
     - [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
@@ -361,7 +367,7 @@ In our Pokémon NFT trading platform, wagmi plays an essential role by providing
 By integrating wagmi with Next.js and TypeScript, our platform helps deliver a responsive, robust, and intuitive user experience, significantly improving interaction quality and making the trading of Pokémon NFTs enjoyable and seamless.
 
 
-We refer to section [Trading Platform](#6-trading-platform) for a complete overview of the interface.
+We refer to section [Trading Platform](#6-trading-platform) and the [demonstration video](https://polybox.ethz.ch/index.php/s/9X9GFbmWcCxp6zm) for a complete overview of the interface.
 
 
 ### Security Considerations
