@@ -346,14 +346,19 @@ In our Pokémon NFT trading platform, wagmi plays an essential role by providing
 ####  **Transaction Handling and Confirmation**
 
 * The `useWaitForTransactionReceipt` hook ensures users get clear, real-time feedback about their transactions, indicating whether they are pending, successful, or if something has gone wrong.
-* This transparency significantly enhances the reliability and user experience of our platform.
+* This communication significantly enhances the reliability and user experience of our platform.
 
 ####  **Event Listening**
 
 * Utilizing the `useWatchContractEvent` hook, our frontend listens for blockchain events like auctions, sales, or minting activities.
-* Real-time updates ensure the UI stays synchronized with on-chain activities, offering users instant visibility into marketplace dynamics.
+* Real-time updates ensure the UI stays synchronized with on-chain activities, offering users instant visibility into marketplace updates.
 
-By integrating wagmi, our platform delivers a responsive, robust, and intuitive user experience, significantly improving interaction quality and making the trading of Pokémon NFTs enjoyable and seamless.
+#### **Next.js and TypeScript Integration**
+
+* We used **Next.js** and **TypeScript** to help us build a cleaner, more responsive UI.
+* Next.js made routing and component management simpler, while TypeScript gave us more confidence through helpful type checking during development.
+
+By integrating wagmi with Next.js and TypeScript, our platform helps deliver a responsive, robust, and intuitive user experience, significantly improving interaction quality and making the trading of Pokémon NFTs enjoyable and seamless.
 
 
 We refer to section [Trading Platform](#6-trading-platform) for a complete overview of the interface.
