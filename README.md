@@ -55,8 +55,7 @@ TODO: Insert Photo
 * **Node.js & npm**: Download and install from [nodejs.org](https://nodejs.org/).
 * **MetaMask**: Install the browser extension from [metamask.io](https://metamask.io/).
 
-> **Tip:** For a deeper experience and to simulate multiple users, consider using separate browser instances or profiles, each with MetaMask installed. (@Matteo is this needed here?)
-
+> **Tip for advanced testers:** For a deeper experience and to simulate multiple users, consider using separate browser profiles, each with MetaMask installed.
 ---
 
 ### 1. Backend (Smart Contracts)
@@ -141,6 +140,7 @@ NEW CORRECTED:
 2. A page with the title "Select Account" should open up. On this page select **+ Add account or hardware wallet**. 
 3. Select **Import account**
 4. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
+5. Switch to new account
 
 OLD IGNORE (@MATTEO): 
 1. Open MetaMask and click the account avatar (top-right).
@@ -165,7 +165,9 @@ OLD IGNORE: MetaMask in both profiles is now connected to your local blockchain 
 
 ---
 
-### 5. Tests (Optional)
+### 5. 
+
+### 6. Tests (Optional)
 
 NEW: In a new termninal, in the **project root**, run the contract tests:
 
