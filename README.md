@@ -47,7 +47,7 @@ In this project, we developed a decentralised application (dApp) for trading Pok
 
 In this [README](README.md) we explain how set up and use our trading platform in [Setup Instructions](#setup-instructions) a provide a [technical documentation](#technical-documentation) of individual files (the essential part of every README). 
 
-We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve deeper into our design choices and overall work process. We aim to allow the reader hopefully better understand design choices.
+We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve deeper into our overall work process.
 
 ## Setup Instructions
 
