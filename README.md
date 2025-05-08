@@ -112,7 +112,7 @@ Run the development server:
 npm run dev
 ```
 
-Open your browser at [http://localhost:3000](http://localhost:3000) to interact with the dApp. The compilation in the terminal will only start if you open the [localhost](http://localhost:3000)! The compilation will take about a minute.
+Open your browser at [http://localhost:3000](http://localhost:3000) to interact with the dApp. The compilation in the terminal will only start if you open the [localhost](http://localhost:3000)! The compilation will need ~1 minute.
 
 ---
 
@@ -121,19 +121,30 @@ Open your browser at [http://localhost:3000](http://localhost:3000) to interact 
 
 ##### 3.1. **Add Local Hardhat Network** in MetaMask:
 
-   * Open the MetaMask extension and click the network selector button in the top-left corner.
+   * Open the MetaMask extension
+   - To get full-screen mode: Click on the **button with 3 dots** and select **Expand View**
+   -  Click the **network selector button** in the top-left corner.
    * NEW: Click on **+ Add a custom network**
-   * OLD IGNORE: Select **Add network** (or **Custom RPC**).
+
+   Fill in following specifications:
    * **Network Name:** Hardhat Local
-   * **RPC URL:** [http://127.0.0.1:8545](http://127.0.0.1:8545)
+   * **Default RPC URL:** [http://127.0.0.1:8545](http://127.0.0.1:8545)
    * **Chain ID:** 31337
    * **Currency Symbol:** PokeCoin
 
+Now do the following:
+- Select **Save**
+- Click the **network selector button** in the top-left corner and select your newly created network "Hardhat Local"
+
+
 ##### 3.2. **Import Pre-Funded Accounts**
 
-> **Tip:** If the user would like to simulate the interactive multi-user funtionalities, we recommend to create multiple browser profiles and open instances of [http://localhost:3000](http://localhost:3000) in each browser profile:
+> **Tip:** If the user would like to simulate the interactive multi-user funtionalities, we recommend to create multiple browser profiles, a metamask wallet for each browser profiles and open instances of [http://localhost:3000](http://localhost:3000) in each browser profile:
 
 > TODO: Add picture
+
+>**Note:** Having multiple browser profiles is not the same  as having browser windows!
+
 
 **In each browser profile:**
 
@@ -142,7 +153,7 @@ NEW CORRECTED:
 2. A page with the title "Select Account" should open up. On this page select **+ Add account or hardware wallet**. 
 3. Select **Import account**
 4. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
-5. Switch to new account
+5. Switch to newly created account
 
 OLD IGNORE (@MATTEO): 
 1. Open MetaMask and click the account avatar (top-right).
@@ -167,12 +178,29 @@ OLD IGNORE: MetaMask in both profiles is now connected to your local blockchain 
 
 ---
 
-### 5. 
+### 5. Connect MetaMask to the Trading Platform
+
+- Go to [http://localhost:3000](http://localhost:3000)
+- You should see 4 buttons under **Connect**
+- Select **MetaMask**
+- Under Use your enabled networks click **Edit**
+- Select **Hardhat Local** only. You do not need any other networks.
+ **Connect** your MetaMask with our Pokemon trading platform residing on [localhost](http://localhost:3000)
+
+### 6. Trading Platform!
+
+At the very top you are going to see some basic account and wallet information. Here you can also connect and disconnect you wallet.
+
+Next you will see the title, as well as your Pokemon contract and Trading Platform contract address. 
+
+Under
+
+
 
 
 ---
 
-### 6. Tests (Optional)
+### 7. Tests (Optional)
 
 NEW: In a new termninal, in the **project root**, run the contract tests:
 
