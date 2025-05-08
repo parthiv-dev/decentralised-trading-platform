@@ -40,7 +40,7 @@ We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve d
 
 ## Setup Instructions
 
-To run the Pokémon Card dApp locally, follow these steps.
+To run the Pokémon Card dApp locally, follow the steps in this section.
 
 > Note: We faced some issues when trying to deploy and run on FireFox. We suggest that the user uses Chromium-based browsers.
 
@@ -51,7 +51,7 @@ To run the Pokémon Card dApp locally, follow these steps.
 * **Node.js & npm**: Download and install from [nodejs.org](https://nodejs.org/).
 * **MetaMask**: Install the browser extension from [metamask.io](https://metamask.io/).
 
-> **Tip for advanced testers:** For a deeper experience and to simulate multiple users, consider using separate browser profiles, each with MetaMask installed.
+> **Tip for advanced testers:** For a deeper experience and to simulate multiple users, consider using separate browser profiles, each with MetaMask installed. More on this in the followin sections.
 ---
 
 ### 1. Backend (Smart Contracts)
@@ -233,7 +233,7 @@ In a new termninal, in the **project root**, run the contract tests:
 npx hardhat test
 ```
 ---
-### 6. Batch Minting NFTs (Optional)
+### 8. Batch Minting NFTs (Optional)
 
 To batch mint Pokémon Card NFTs up to ID 100, run:
 
@@ -248,8 +248,6 @@ This script will mint all cards from ID 1 through 100 using metadata on IPFS.
 
 ### Smart Contracts
 
-
-
 We implement two Solidity contracts:
 - [PokemonCard.sol](contracts\PokemonCard.sol): To **securely mint** Pokemon NFTs and store comprehensive **metadata** for pokemon characteristics
 -  [TradingPlatform.sol](contracts\TradingPlatform.sol):
@@ -258,7 +256,7 @@ We implement two Solidity contracts:
 
 TODO for 3.1. Smart Contracts:
 - NFT contract for Pokemon cards following ERC271 contract (DONE)
-- Comprehensive metadata for Pokemon characteristics
+- Comprehensive metadata for Pokemon characteristics (DONE)
 - Secure minting functionalities
 - Access control (DONE)
 
@@ -275,7 +273,7 @@ TODO for 3.1. Smart Contracts:
 - [ERC721URIStorage](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721URIStorage): To allow updating token URIs for individual token IDs.
 - `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
 
-To be able to store comprehensive metadata for Pokemon characteristics we defined a Pokemon struct:
+To be able to store **comprehensive metadata for Pokemon characteristics** we defined a Pokemon struct:
 
 ```
     struct Pokemon {
@@ -296,6 +294,8 @@ This struct was populated when minting a Pokemon NFT token by calling constructo
 - the in-built Ownable (modifier)
 - an auxiliary mapping which maps user addresses to bool (true = allowed to mint; false = not allowed to mint)
 - a modifier onlyAuthorized which check if either of the above is true for a given user
+
+**Secure minting** has been implemented by the use of the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721). Specifically we used the modified the `safeMint()` function.
 
 #### TradingPlatform Contract
 
