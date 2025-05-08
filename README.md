@@ -1,5 +1,7 @@
 # Decentralised Trading Platform
 
+Matteo Pelossi & Parthiv Kangsabanik
+
 ## Table of Contents
 
 - [Introduction](#introduction)
