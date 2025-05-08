@@ -1,5 +1,34 @@
 # Decentralised Trading Platform
 
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Setup Instructions](#setup-instructions)
+  - [Prerequisites](#prerequisites)
+  - [1. Backend (Smart Contracts)](#1-backend-smart-contracts)
+  - [2. Frontend (Next.js dApp)](#2-frontend-nextjs-dapp)
+  - [3. MetaMask Configuration](#3-metamask-configuration)
+    - [3.1. Add Local Hardhat Network](#31-add-local-hardhat-network-in-metamask)
+    - [3.2. Import Pre-Funded Accounts](#32-import-pre-funded-accounts)
+  - [5. Connect MetaMask to the Trading Platform](#5-connect-metamask-to-the-trading-platform)
+  - [6. Trading Platform](#6-trading-platform)
+    - [My Cards & Mint](#my-cards--mint)
+    - [Marketplace](#marketplace)
+    - [Auctions](#auctions)
+    - [Admin Panel (only for the contract owner)](#admin-panel-only-for-the-contract-owner)
+  - [7. Tests (Optional)](#7-tests-optional)
+  - [8. Batch Minting NFTs (Optional)](#8-batch-minting-nfts-optional)
+- [Technical Documentation](#technical-documentation)
+  - [Smart Contracts](#smart-contracts)
+    - [PokemonCard Contract](#pokemoncard-contract)
+    - [TradingPlatform Contract](#tradingplatform-contract)
+  - [Interaction between PokemonCard & TradingPlatform](#interaction-between-pokemoncard--tradingplatform)
+  - [Frontend Development](#frontend-development)
+  - [Security Considerations](#security-considerations)
+  - [Advanced Enhancements](#advanced-enhancements)
+    - [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
+
+
 ## Introduction
 
 In this project, we developed a decentralised application (dApp) for trading Pokémon cards. The project integrates **blockchain technology** with **NFT concepts**, requiring implementation of [smart contracts](#smart-contracts), [frontend development](#frontend-development), and **Web3 technologies integration**. We deliver a complete, functional trading platform deployed on a local testnet. 
