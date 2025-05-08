@@ -1,16 +1,5 @@
 # Decentralised Trading Platform
 
-## Checklist (to be removed later)
-See TODO in each paragraph!
-
-**Have to implement AND explain each criterion in at least 1 paragraph**
-
-## Table of Contents
-TODO
-
-
-
-
 ## Introduction
 
 In this project, we developed a decentralised application (dApp) for trading Pokémon cards. The project integrates **blockchain technology** with **NFT concepts**, requiring implementation of [smart contracts](#smart-contracts), [frontend development](#frontend-development), and **Web3 technologies integration**. We deliver a complete, functional trading platform deployed on a local testnet. 
@@ -36,7 +25,7 @@ To run the Pokémon Card dApp locally, follow the steps in this section.
 
 ### 1. Backend (Smart Contracts)
 
-> **Tip:** We recommend the user to have at least 3 separate windows when setting up the local deployment:
+> **Tip:** We recommend that the user has at least 3 separate windows when setting up the local deployment:
 > - Setup Instructions (this page)
 > - A browser window with the MetaMask account open in full-window mode
 > - Terminal (with multiple tabs)
@@ -228,7 +217,7 @@ This script will mint all cards from ID 1 through 100 using metadata on IPFS. Th
 
 ## Technical Documentation
 
-> Note: Some of the links to files might not work on the testers file system because of switching of / and \. For windows user, there should no issues if this [README](README.md) is read on the local files system. However the links will not work on GitHub.
+> Note: Some of the links to files might not work on the tester's file system because of the switch of / and \. For Windows users, there should be no issues if this [README](README.md) is read on the local file system or on GitHub.
 
 ### Smart Contracts
 
@@ -240,7 +229,7 @@ We have focussed on **simplicity** and intuitive understanding of the contracts 
 
 #### PokemonCard Contract
 
-[PokemonCard.sol](contracts/PokemonCard.sol) is a NFT contract for Pokemons based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition, we used the following extensions:
+[PokemonCard.sol](contracts/PokemonCard.sol) is an NFT contract for Pokemons based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition, we used the following extensions:
 
 
 - [ERC721Burnable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Burnable): To enable token holders destroy their tokens.
@@ -285,7 +274,7 @@ TODO for 3.1. Smart Contracts:
 - Security best practices in implementation
 - Simplicity
 
-The [TradingPlatform.sol](contracts/TradingPlatform.sol) is, as the name say,s a contract for the trading platform. Tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users can securely withdraw their earned funds, which they have earned by (re-)selling NFT tokens) to their wallet.
+The [TradingPlatform.sol](contracts/TradingPlatform.sol) is, as the name says, a contract for the trading platform. Tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users can securely withdraw their earned funds, which they have earned by (re-)selling NFT tokens, to their wallet.
 
 We have implemented **best practices for security** by making use of existing OpenZeppelin contracts:
 - [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): To prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
@@ -310,7 +299,7 @@ TODO for 3.2 Front Development:
 - Proper Web3 integration through event listeners for contract updates, transaction  handling and wallet integration
 
 TODO for 4.1 Development Environment:
-- The development environment setup should be clearly documented to ensure reproducibility
+- The development environment setup should be documented to ensure reproducibility
 
 MATTEO!!!
 
@@ -319,7 +308,7 @@ MATTEO!!!
 
 - Protection against Reentrancy attacks (DONE)
 - Access control using function modifiers and role-based access where necessary (DONE)
-- IF front-running isa  concern (IS IT?) => a front-running prevention, e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive operations (NOT DONE)
+- IF front-running is a  concern (IS IT?) => a front-running prevention, e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive operations (NOT DONE)
 
 As mentioned in section on the [TradingPlatform Contract](#tradingplatform-contract), we protected the trading platform against **reentrancy attacks** by making use of OpenZeppelin's [ReentrancyGuard](https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard).
 
@@ -334,16 +323,16 @@ We also implement **access control** in [PokemonCard.sol](contracts/PokemonCard.
 
 To be able to view images of Pokemons on the web-based trading trading platform we decided to integrate IPFS metadata storage. 
 
-First, we searched for a complete data set of open-source Pokémon pictures. We found a [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) with 898 images of all the Pokemons taken from the Pokedex database. Each image is of the format "name.png". We decide that we want to work with the first 100 (alphabetic) Pokemons for simplicity. 
+First, we searched for a complete data set of open-source Pokémon pictures. We found a [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) with 898 images of all the Pokémons taken from the Pokedex database. Each image is of the format "name.png". We decided that we want to work with the first 100 (alphabetical) Pokémons for simplicity. 
 
 We also renamed the original image files from the [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) to "1.png", "2.png", etc, for simplicity later on when we call the files based on the tokenId of the respective pokemon mint. This was done using a [Python script](data\pokemon_images\number_img.py). We then uploaded the [folder](data\pokemon_images\byNumber), consisting of the 100 numbered images, to the [Pinata Cloud](https://pinata.cloud/) for easy access when minting on the blockchain.
 
-For additional metadata for each Pokémon we referred to the [PokeApi](https://pokeapi.co/). We wrote a [Python script](data\pokemon_get_data.py) which gets the metadata based on the filenames of the kaggle image data set and stores the data (numerical and non-numerical characteristics, and the IPFS link for each image) for each Pokemon in JSON files of [OpenSea format](https://docs.opensea.io/docs/metadata-standards). The files are purposefully named as "1.json", "2.json", etc. forthe  same reason as before. The [folder](data\pokemon_metadata) with the JSON files was also uploaded to the [Pinata Cloud](https://pinata.cloud/).
+For additional metadata for each Pokémon, we referred to the [PokeApi](https://pokeapi.co/). We wrote a [Python script](data\pokemon_get_data.py) which gets the metadata based on the filenames of the kaggle image data set and stores the data (numerical and non-numerical characteristics, and the IPFS link for each image) for each Pokemon in JSON files of [OpenSea format](https://docs.opensea.io/docs/metadata-standards). The files are purposefully named as "1.json", "2.json", etc., for the  same reason as before. The [folder](data\pokemon_metadata) with the JSON files was also uploaded to the [Pinata Cloud](https://pinata.cloud/).
 
 
 [Pinata Cloud](https://pinata.cloud/) is a distributed storage platform used e.g. OpenSea to achieve secure, scalable storage with IPFS's decentralized infrastructure.
 
-IMPORTANT NOTE: Since we integrated metadata storage through IPFS, there was theoretically no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts/PokemonCard.sol) contract! For simplicity and clarity the Pokemon struct and associated functions where kept to enable proper functioning of the trading platform without IPFS integration. For reference, this is the Pokémon struct:
+IMPORTANT NOTE: Since we integrated metadata storage through IPFS, there was theoretically no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts/PokemonCard.sol) contract! For simplicity and clarity, the Pokémon struct and associated functions were kept to enable proper functioning of the trading platform without IPFS integration. For reference, this is the Pokémon struct:
 
 ```
     struct Pokemon {
@@ -375,7 +364,7 @@ TODO for 6. Group Work Specifications
 We worked closely together, spending hours on Discord calls to collaborate on this project.
 
 Matteo:
-- Leading frontend development ()
+- Leading frontend development
 - Leading the making of the demonstration video
 
 Parthiv:
