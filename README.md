@@ -322,7 +322,38 @@ We have implemented **best practices for security** by making use of existing Op
 [TradingPlatform.sol](contracts/TradingPlatform.sol) incorporates [PokemonCard.sol](contracts/PokemonCard.sol) in the sense that one first deploys [PokemonCard.sol](contracts/PokemonCard.sol), receives its contract address and then calls (the constructor of) [TradingPlatform.sol](contracts/TradingPlatform.sol), giving the contract address of [PokemonCard.sol](contracts/PokemonCard.sol) as an input. Furthermore, [TradingPlatform.sol](contracts/TradingPlatform.sol) calls several functions of [PokemonCard.sol](contracts/PokemonCard.sol) in its own functions. 
 
 
-### Frontend Development
+### Frontend Development: Integration with Wagmi
+
+**Wagmi** is a modern React library designed to simplify the interaction between Ethereum and frontend applications. It significantly reduces boilerplate code, making tasks like wallet integration, interacting with contracts, transaction handling, and event monitoring intuitive and straightforward.
+
+In our Pokémon NFT trading platform, wagmi plays an essential role by providing user-friendly React hooks that helped handle complex Web3 operations:
+
+###  **Wallet Connectivity**
+
+* Using wagmi's `useAccount` hook, we easily manage user wallet connections, authentication states, and account information.
+* It integrates seamlessly with popular wallet providers, in our case MetaMask, ensuring users can connect effortlessly.
+
+###  **Reading Contract Data**
+
+* Wagmi's `useReadContract` hook simplifies fetching on-chain data, making it straightforward to retrieve NFT ownership details, token balances, contract metadata, and marketplace statuses.
+
+###  **Writing to Smart Contracts**
+
+* Transactions were extremely simplified through the `useWriteContract` hook, taking care of transaction handling, gas estimation, and error management.
+* Users can effortlessly mint NFTs, list tokens for sale, place bids, and execute marketplace transactions with minimal.
+
+###  **Transaction Handling and Confirmation**
+
+* The `useWaitForTransactionReceipt` hook ensures users get clear, real-time feedback about their transactions, indicating whether they are pending, successful, or if something has gone wrong.
+* This transparency significantly enhances the reliability and user experience of our platform.
+
+###  **Event Listening**
+
+* Utilizing the `useWatchContractEvent` hook, our frontend listens for blockchain events like auctions, sales, or minting activities.
+* Real-time updates ensure the UI stays synchronized with on-chain activities, offering users instant visibility into marketplace dynamics.
+
+By integrating wagmi, our platform delivers a responsive, robust, and intuitive user experience, significantly improving interaction quality and making the trading of Pokémon NFTs enjoyable and seamless.
+
 
 We refer to section [Trading Platform](#6-trading-platform) for a complete overview of the interface.
 
