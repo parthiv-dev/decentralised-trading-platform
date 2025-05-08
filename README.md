@@ -42,13 +42,7 @@ We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve d
 
 To run the Pokémon Card dApp locally, follow these steps. 
 
-> **Tip:** We recommend the user to have atleast 4 seperate windows when setting up the local deployment:
-> - Setup Instructions (this page)
-> - A browser window with the MetaMask account open in full-screen mode
-> - Terminal 1
-> - Terminal 2
 
-TODO: Insert Photo
 
 ### Prerequisites
 
@@ -60,7 +54,15 @@ TODO: Insert Photo
 
 ### 1. Backend (Smart Contracts)
 
-Perform all commands in the **project root** directory.
+> **Tip:** We recommend the user to have atleast 4 seperate windows when setting up the local deployment:
+> - Setup Instructions (this page)
+> - A browser window with the MetaMask account open in full-screen mode
+> - Terminal 1
+> - Terminal 2
+
+> TODO: Insert Photo
+
+First, clone/unzip the project folder and perform following commands in the **project root** directory:
 
 ```bash
 npm install
@@ -80,7 +82,7 @@ npx hardhat node
 
 > Keep this terminal open — it runs your local blockchain on [http://127.0.0.1:8545](http://127.0.0.1:8545) (chain ID: 31337).
 
-In a **new terminal**, deploy the contracts to the local network:
+In a **new terminal**, deploy the contracts to the local network from the **project root** directory:
 
 ```bash
 npx hardhat run scripts/deploy.js --network localhost
@@ -92,7 +94,7 @@ This updates `wagmi-project/src/contracts/deployedAddresses.json` with the deplo
 
 ### 2. Frontend (Next.js dApp)
 
-Switch to the frontend folder:
+Switch to the frontend folder in the same terminal:
 
 ```bash
 cd wagmi-project
@@ -110,7 +112,7 @@ Run the development server:
 npm run dev
 ```
 
-Open your browser at [http://localhost:3000](http://localhost:3000) to interact with the dApp.
+Open your browser at [http://localhost:3000](http://localhost:3000) to interact with the dApp. The compilation in the terminal will only start if you open the [localhost](http://localhost:3000)! The compilation will take about a minute.
 
 ---
 
@@ -129,7 +131,7 @@ Open your browser at [http://localhost:3000](http://localhost:3000) to interact 
 
 ##### 3.2. **Import Pre-Funded Accounts**
 
-> **Tip:** If the user would like to simulate the interactive multi-user funtionalities, we recommend to open multiple instances/windows of [http://localhost:3000](http://localhost:3000) and do step 3 for multiple browser profiles:
+> **Tip:** If the user would like to simulate the interactive multi-user funtionalities, we recommend to create multiple browser profiles and open instances of [http://localhost:3000](http://localhost:3000) in each browser profile:
 
 > TODO: Add picture
 
@@ -147,7 +149,7 @@ OLD IGNORE (@MATTEO):
 2. Select **Import Account**.
 3. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
 
-> **Tip:** **Account #0** is the deployer and has administrative privileges (such as minting, authorizing other minters etc.). We recommend to select **Account #0**.
+> **Tip:** **Account #0** is the deployer and has administrative privileges (such as minting, authorizing other minters etc.). We recommend to selecting **Account #0** for the first browser profile.
 
 **Available accounts:**
 
@@ -158,7 +160,7 @@ OLD IGNORE (@MATTEO):
 * **#2**: `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC`
     **Private Key:** `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a`
 
-NEW: MetaMaks will now be connected to your local blockchain "Hardhat Local" with "PokeCoin" as your crypto currentcy.
+NEW: MetaMask will now be connected to your local blockchain network named "Hardhat Local" with "PokeCoin" as your crypto currentcy.
 
 OLD IGNORE: MetaMask in both profiles is now connected to your local blockchain with test PokeCoin. (@MATTEO What do mean by both profiles? What do you mean by test ETH?)
 
@@ -166,6 +168,9 @@ OLD IGNORE: MetaMask in both profiles is now connected to your local blockchain 
 ---
 
 ### 5. 
+
+
+---
 
 ### 6. Tests (Optional)
 
