@@ -72,6 +72,50 @@ describe("PokemonCard", function () {
       expect(await pokemonCard.balanceOf(otherAccount.address)).to.equal(1);
     });
 
+    it("Should fail to mint if on-chain metadata is identical to an existing token", async function () {
+      const { pokemonCard, owner } = await loadFixture(deployPokemonCardFixture);
+      const tokenURI = "ipfs://somehash/0.json";
+
+      // Mint first token
+      await pokemonCard.safeMint(
+        owner.address,
+        tokenURI,
+        defaultMintValues.name,
+        defaultMintValues.hp,
+        defaultMintValues.attack,
+        defaultMintValues.defense,
+        defaultMintValues.speed,
+        defaultMintValues.type1,
+        defaultMintValues.type2,
+        defaultMintValues.special
+      );
+
+      // Attempt to mint second token with identical on-chain metadata
+      await expect(
+        pokemonCard.safeMint(
+          owner.address,
+          "ipfs://anotheruri.json", // Different URI is fine
+          defaultMintValues.name, // Identical name
+          defaultMintValues.hp, // Identical hp
+          defaultMintValues.attack, // Identical attack
+          defaultMintValues.defense, // Identical defense
+          defaultMintValues.speed, // Identical speed
+          defaultMintValues.type1, // Identical type1
+          defaultMintValues.type2, // Identical type2
+          defaultMintValues.special // Identical special
+        )
+      ).to.be.revertedWith("PokemonCard: This exact set of on-chain metadata has already been minted.");
+    });
+
+    it("Should allow minting if on-chain metadata is slightly different", async function () {
+      const { pokemonCard, owner } = await loadFixture(deployPokemonCardFixture);
+      await pokemonCard.safeMint(owner.address, "uri1", ...Object.values(defaultMintValues));
+      // Mint second token with slightly different HP
+      const slightlyDifferentValues = { ...defaultMintValues, hp: defaultMintValues.hp + 1 };
+      await expect(pokemonCard.safeMint(owner.address, "uri2", ...Object.values(slightlyDifferentValues)))
+        .to.emit(pokemonCard, "Transfer"); // Should succeed
+    });
+
     it("Should not allow non-authorized non-owners to mint a token", async function () {
       const { pokemonCard, otherAccount } = await loadFixture(deployPokemonCardFixture);
       const tokenURI = "ipfs://somehash/1.json";
@@ -176,16 +220,37 @@ describe("PokemonCard", function () {
         pokemonCard.safeMint(
           otherAccount.address,
           "uri2",
-          defaultMintValues.name,
-          defaultMintValues.hp,
+          `${defaultMintValues.name}Paused`, // Ensure unique metadata
+          defaultMintValues.hp + 1,         // Ensure unique metadata
           defaultMintValues.attack,
           defaultMintValues.defense,
           defaultMintValues.speed,
           defaultMintValues.type1,
           defaultMintValues.type2,
           defaultMintValues.special
-        )
+        ) // This mint is expected to fail due to pause, not metadata
       ).to.be.revertedWithCustomError(pokemonCard, "EnforcedPause");
+    });
+
+    it("Should prevent burn when paused, while approve and setApprovalForAll remain operational", async function () {
+      const { pokemonCard, owner, otherAccount } = await loadFixture(deployPokemonCardFixture);
+      const tokenId = 1;
+      await pokemonCard.safeMint(owner.address, "uri", ...Object.values(defaultMintValues));
+
+      await pokemonCard.pause();
+      expect(await pokemonCard.paused(), "Contract should be paused before testing pausable functions").to.be.true;
+
+      // Approve and setApprovalForAll are NOT pausable by default in ERC721Pausable
+      // as they don't go through the _update hook. They should succeed.
+      await expect(pokemonCard.approve(otherAccount.address, tokenId)).to.not.be.reverted;
+      // Verify approval took place
+      expect(await pokemonCard.getApproved(tokenId)).to.equal(otherAccount.address);
+
+      await expect(pokemonCard.setApprovalForAll(otherAccount.address, true)).to.not.be.reverted;
+      expect(await pokemonCard.isApprovedForAll(owner.address, otherAccount.address)).to.be.true;
+
+      await expect(pokemonCard.burn(tokenId))
+        .to.be.revertedWithCustomError(pokemonCard, "EnforcedPause");
     });
   });
 
@@ -384,6 +449,46 @@ describe("PokemonCard", function () {
       await expect(pokemonCard.ownerOf(tokenId)).to.be.revertedWithCustomError(pokemonCard, "ERC721NonexistentToken").withArgs(tokenId);
     });
 
+    it("Should allow an approved address to burn a token", async function () {
+      const { pokemonCard, owner, otherAccount } = await loadFixture(deployPokemonCardFixture);
+      const tokenId = 1;
+      await pokemonCard.safeMint(owner.address, "uri", ...Object.values(defaultMintValues));
+      await pokemonCard.connect(owner).approve(otherAccount.address, tokenId);
+
+      await expect(pokemonCard.connect(otherAccount).burn(tokenId))
+        .to.emit(pokemonCard, "Transfer")
+        .withArgs(owner.address, ethers.ZeroAddress, tokenId);
+      expect(await pokemonCard.balanceOf(owner.address)).to.equal(0);
+    });
+
+    it("Should not allow a non-owner/non-approved address to burn a token", async function () {
+      const { pokemonCard, owner, otherAccount } = await loadFixture(deployPokemonCardFixture);
+      const tokenId = 1;
+      await pokemonCard.safeMint(owner.address, "uri", ...Object.values(defaultMintValues));
+
+      await expect(pokemonCard.connect(otherAccount).burn(tokenId))
+        .to.be.revertedWithCustomError(pokemonCard, "ERC721InsufficientApproval");
+    });
+
+    it("Should revert when trying to burn a non-existent token", async function () {
+      const { pokemonCard } = await loadFixture(deployPokemonCardFixture);
+      const nonExistentTokenId = 999;
+      await expect(pokemonCard.burn(nonExistentTokenId))
+        .to.be.revertedWithCustomError(pokemonCard, "ERC721NonexistentToken").withArgs(nonExistentTokenId);
+    });
+
+    it("Should prevent re-minting with identical on-chain metadata even after the original token is burned", async function () {
+      const { pokemonCard, owner } = await loadFixture(deployPokemonCardFixture);
+      const tokenId = 1;
+      // Mint and burn the first token
+      await pokemonCard.safeMint(owner.address, "uri1", ...Object.values(defaultMintValues));
+      await pokemonCard.burn(tokenId);
+
+      // Attempt to mint a new token with the same metadata
+      await expect(pokemonCard.safeMint(owner.address, "uri2", ...Object.values(defaultMintValues)))
+        .to.be.revertedWith("PokemonCard: This exact set of on-chain metadata has already been minted.");
+    });
+
     // Add more burn tests: approved can burn, non-owner cannot, etc.
   });
 
@@ -407,10 +512,28 @@ describe("PokemonCard", function () {
       const { pokemonCard, owner, otherAccount } = await loadFixture(deployPokemonCardFixture);
       expect(await pokemonCard.totalSupply()).to.equal(0);
 
-      await pokemonCard.safeMint(owner.address, "uri1", ...Object.values(defaultMintValues)); // ID 1
+      // Mint token 1
+      await pokemonCard.safeMint(owner.address, "uri1",
+        defaultMintValues.name,
+        defaultMintValues.hp,
+        defaultMintValues.attack,
+        defaultMintValues.defense,
+        defaultMintValues.speed,
+        defaultMintValues.type1,
+        defaultMintValues.type2,
+        defaultMintValues.special);
       expect(await pokemonCard.totalSupply()).to.equal(1);
 
-      await pokemonCard.safeMint(otherAccount.address, "uri2", ...Object.values(defaultMintValues)); // ID 2
+      // Mint token 2 with unique metadata
+      await pokemonCard.safeMint(otherAccount.address, "uri2",
+        `${defaultMintValues.name}Two`, // Unique name
+        defaultMintValues.hp + 1,       // Unique HP
+        defaultMintValues.attack,
+        defaultMintValues.defense,
+        defaultMintValues.speed,
+        defaultMintValues.type1,
+        defaultMintValues.type2,
+        defaultMintValues.special);
       expect(await pokemonCard.totalSupply()).to.equal(2);
 
       await pokemonCard.burn(1); // Burn token 1
@@ -419,9 +542,38 @@ describe("PokemonCard", function () {
 
     it("tokenOfOwnerByIndex and tokenByIndex should work correctly", async function () {
       const { pokemonCard, owner, otherAccount } = await loadFixture(deployPokemonCardFixture);
-      await pokemonCard.safeMint(owner.address, "uriO1", ...Object.values(defaultMintValues)); // ID 1
-      await pokemonCard.safeMint(otherAccount.address, "uriA1", ...Object.values(defaultMintValues)); // ID 2
-      await pokemonCard.safeMint(owner.address, "uriO2", ...Object.values(defaultMintValues)); // ID 3
+      // Mint token 1 (ID 1) for owner
+      await pokemonCard.safeMint(owner.address, "uriO1",
+        defaultMintValues.name,
+        defaultMintValues.hp,
+        defaultMintValues.attack,
+        defaultMintValues.defense,
+        defaultMintValues.speed,
+        defaultMintValues.type1,
+        defaultMintValues.type2,
+        defaultMintValues.special);
+
+      // Mint token 2 (ID 2) for otherAccount with unique metadata
+      await pokemonCard.safeMint(otherAccount.address, "uriA1",
+        `${defaultMintValues.name}Two`,
+        defaultMintValues.hp + 1,
+        defaultMintValues.attack,
+        defaultMintValues.defense,
+        defaultMintValues.speed,
+        defaultMintValues.type1,
+        defaultMintValues.type2,
+        defaultMintValues.special);
+
+      // Mint token 3 (ID 3) for owner with unique metadata
+      await pokemonCard.safeMint(owner.address, "uriO2",
+        `${defaultMintValues.name}Three`,
+        defaultMintValues.hp + 2,
+        defaultMintValues.attack,
+        defaultMintValues.defense,
+        defaultMintValues.speed,
+        defaultMintValues.type1,
+        defaultMintValues.type2,
+        defaultMintValues.special);
 
       expect(await pokemonCard.tokenOfOwnerByIndex(owner.address, 0)).to.equal(1);
       expect(await pokemonCard.tokenOfOwnerByIndex(owner.address, 1)).to.equal(3);
@@ -435,5 +587,28 @@ describe("PokemonCard", function () {
       await expect(pokemonCard.tokenOfOwnerByIndex(owner.address, 2)).to.be.revertedWithCustomError(pokemonCard, "ERC721OutOfBoundsIndex");
       await expect(pokemonCard.tokenByIndex(3)).to.be.revertedWithCustomError(pokemonCard, "ERC721OutOfBoundsIndex");
     });
+  });
+
+  describe("Next Token ID", function () {
+    it("should return correct next token ID", async function () {
+      const { pokemonCard, owner } = await loadFixture(deployPokemonCardFixture);
+
+      expect(await pokemonCard.getNextTokenId()).to.equal(1); // Before any mints
+
+      await pokemonCard.safeMint(owner.address, "uri1", ...Object.values(defaultMintValues));
+      expect(await pokemonCard.getNextTokenId()).to.equal(2); // After 1 mint
+
+      const uniqueValues = { ...defaultMintValues, name: "PikaTest2" };
+      await pokemonCard.safeMint(owner.address, "uri2", ...Object.values(uniqueValues));
+      expect(await pokemonCard.getNextTokenId()).to.equal(3); // After 2 mints
+    });
+  });
+
+  // Correcting a misleading comment in an existing test description
+  describe("Pokemon Data", function () {
+    // ... existing tests ...
+    // The comment in "Should revert when trying to get data for a non-existent token"
+    // regarding getPokemon(0) was potentially misleading based on the `pokemonExists` modifier.
+    // The test itself is functionally correct.
   });
 });

@@ -153,8 +153,8 @@ describe("TradingPlatform", function () {
       const newTokenId = 3n; // Next available ID after fixture mints
       await pokemonCard.connect(owner).safeMint(
         seller.address,
-        "ipfs://new-token-3",
-        defaultPokemonMintValues.name,
+        "ipfs://new-token-3-unapproved", // Unique URI for clarity
+        `${defaultPokemonMintValues.name}Three`, // Unique name to avoid metadata clash
         defaultPokemonMintValues.hp,
         defaultPokemonMintValues.attack,
         defaultPokemonMintValues.defense,
@@ -297,11 +297,35 @@ describe("TradingPlatform", function () {
           .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__ListingNotActive") // Checks active first
           .withArgs(NON_EXISTENT_ID);
       });
+
+      it("Should fail if seller no longer owns the token at time of purchase", async function () {
+        const { tradingPlatform, pokemonCard, seller, buyer, otherAccount, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
+
+        // Seller transfers the token away after listing
+        await pokemonCard.connect(seller).transferFrom(seller.address, otherAccount.address, tokenId1);
+
+        await expect(tradingPlatform.connect(buyer).buyItem(FIRST_LISTING_ID, { value: LISTING_PRICE }))
+          .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__SellerNoLongerOwnsToken")
+          .withArgs(seller.address, tokenId1);
+      });
+
+      it("Should fail if platform approval was revoked after listing before purchase", async function () {
+        const { tradingPlatform, pokemonCard, seller, buyer, tokenId1, tradingPlatformAddress } = await loadFixture(deployTradingPlatformFixture);
+        // tokenId1 is approved for tradingPlatformAddress in the fixture
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
+
+        // Seller revokes approval for the platform for this specific token
+        await pokemonCard.connect(seller).approve(ethers.ZeroAddress, tokenId1);
+
+        await expect(tradingPlatform.connect(buyer).buyItem(FIRST_LISTING_ID, { value: LISTING_PRICE }))
+          .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__NotApprovedForToken")
+          .withArgs(tradingPlatformAddress, tokenId1);
+      });
     });
   });
 
   describe("Auctions", function () {
-
     describe("Creating Auctions", function () {
       it("Should allow a token owner to create an auction for an approved item", async function () {
         const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
@@ -352,8 +376,8 @@ describe("TradingPlatform", function () {
         const newTokenId = 3n; // Next available ID
         await pokemonCard.connect(owner).safeMint(
             seller.address,
-            "ipfs://new-token-3",
-            defaultPokemonMintValues.name,
+            "ipfs://new-token-3-auction-unapproved", // Unique URI
+            `${defaultPokemonMintValues.name}Three`, // Unique name
             defaultPokemonMintValues.hp,
             defaultPokemonMintValues.attack,
             defaultPokemonMintValues.defense,
@@ -600,6 +624,38 @@ describe("TradingPlatform", function () {
           .to.be.revertedWithCustomError(tradingPlatform, "TradingPlatform__AuctionNotActive")
           .withArgs(createdAuctionId);
       });
+
+      it("Should fail to transfer NFT if seller no longer owns token at auction end (successful auction)", async function () {
+        const { tradingPlatform, pokemonCard, seller, bidder1, otherAccount, tokenId1, tradingPlatformAddress } = await loadFixture(deployTradingPlatformFixture);
+        const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+        const txReceipt = await txResponse.wait();
+        const auctionCreatedLog = txReceipt.logs.find(log => {
+            try { return tradingPlatform.interface.parseLog(log)?.name === "AuctionCreated"; } catch (e) { return false; }
+        });
+        const createdAuctionId = auctionCreatedLog.args.auctionId;
+
+        await tradingPlatform.connect(bidder1).bid(createdAuctionId, { value: BID_1_AMOUNT });
+
+        // Seller transfers the token away after auction started and bid placed
+        await pokemonCard.connect(seller).transferFrom(seller.address, otherAccount.address, tokenId1);
+
+        const auction = await tradingPlatform.auctions(createdAuctionId);
+        const latestTime = await time.latest();
+        if (latestTime < auction.endTime) {
+            await time.increaseTo(auction.endTime + 1n);
+        }
+
+        // Attempt to end the auction. The transfer should fail.
+        // The internal safeTransferFrom will revert.
+        // Since `seller` is not `from` in `safeTransferFrom(seller, winner, tokenId)`
+        // if `seller` is not `ownerOf(tokenId)`.
+        // The error comes from ERC721: `ERC721IncorrectOwner(from, tokenId, ownerOf(tokenId))`
+        // where `from` is `seller.address`.
+        // UPDATE: The actual error is ERC721InsufficientApproval because the platform (_msgSender) is not approved by the new owner (otherAccount).
+        await expect(tradingPlatform.connect(otherAccount).endAuction(createdAuctionId))
+          .to.be.revertedWithCustomError(pokemonCard, "ERC721InsufficientApproval")
+          .withArgs(tradingPlatformAddress, tokenId1); // Spender is the platform, for the token new owner hasn't approved.
+      });
     });
 
     describe("Cancelling Auctions", function () {
@@ -800,7 +856,7 @@ describe("TradingPlatform", function () {
         .withArgs(buyer.address);
     });
 
-    it("Should prevent actions when paused", async function () {
+    it("Should prevent most trading actions when paused, while withdrawals remain operational", async function () {
       const { tradingPlatform, pokemonCard, owner, seller, buyer, bidder1, tokenId1, tokenId2 } = await loadFixture(deployTradingPlatformFixture);
 
       // Setup: List item 0, create auction for item 1
@@ -821,8 +877,8 @@ describe("TradingPlatform", function () {
       const newTokenId = 3n; // Next available ID
       await pokemonCard.connect(owner).safeMint(
         seller.address,
-        "ipfs://token3",
-        defaultPokemonMintValues.name,
+        "ipfs://token3-pausedtest", // Unique URI
+        `${defaultPokemonMintValues.name}Three`, // Unique name
         defaultPokemonMintValues.hp,
         defaultPokemonMintValues.attack,
         defaultPokemonMintValues.defense,
@@ -861,5 +917,80 @@ describe("TradingPlatform", function () {
       await tradingPlatform.connect(seller).withdraw();
       expect(await tradingPlatform.pendingWithdrawals(seller.address)).to.equal(0); // Check balance is zero after withdrawal
     });
+  });
+
+  describe("View Functions", function () {
+    it("getListing should return correct data for an active listing and default for non-existent", async function () {
+      const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+      await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE);
+
+      const listingData = await tradingPlatform.getListing(FIRST_LISTING_ID);
+      expect(listingData.seller).to.equal(seller.address);
+      expect(listingData.tokenId).to.equal(tokenId1);
+      expect(listingData.price).to.equal(LISTING_PRICE);
+      expect(listingData.active).to.be.true;
+
+      const nonExistentData = await tradingPlatform.getListing(NON_EXISTENT_ID);
+      expect(nonExistentData.seller).to.equal(ethers.ZeroAddress);
+      expect(nonExistentData.tokenId).to.equal(0);
+      expect(nonExistentData.price).to.equal(0);
+      expect(nonExistentData.active).to.be.false;
+    });
+
+    it("getAuction should return correct data for an active auction and default for non-existent", async function () {
+      const { tradingPlatform, seller, tokenId1 } = await loadFixture(deployTradingPlatformFixture);
+      const txResponse = await tradingPlatform.connect(seller).createAuction(tokenId1, STARTING_PRICE, AUCTION_DURATION_SECONDS);
+      const txReceipt = await txResponse.wait();
+      const block = await ethers.provider.getBlock(txReceipt.blockNumber);
+      const expectedEndTime = BigInt(block.timestamp) + BigInt(AUCTION_DURATION_SECONDS);
+
+      const auctionData = await tradingPlatform.getAuction(FIRST_AUCTION_ID);
+      expect(auctionData.seller).to.equal(seller.address);
+      expect(auctionData.tokenId).to.equal(tokenId1);
+      expect(auctionData.startingPrice).to.equal(STARTING_PRICE);
+      expect(auctionData.endTime).to.equal(expectedEndTime);
+      expect(auctionData.highestBidder).to.equal(ethers.ZeroAddress);
+      expect(auctionData.highestBid).to.equal(0);
+      expect(auctionData.active).to.be.true;
+      expect(auctionData.ended).to.be.false;
+
+      const nonExistentData = await tradingPlatform.getAuction(NON_EXISTENT_ID);
+      expect(nonExistentData.seller).to.equal(ethers.ZeroAddress);
+      expect(nonExistentData.tokenId).to.equal(0);
+      // ... check other fields for default values
+    });
+  });
+
+  describe("Multiple Concurrent Operations", function () {
+    it("should handle multiple listings and sales correctly", async function () {
+        const { tradingPlatform, seller, buyer, tokenId1, tokenId2 } = await loadFixture(deployTradingPlatformFixture);
+
+        // List two items
+        await tradingPlatform.connect(seller).listItem(tokenId1, LISTING_PRICE); // Listing ID 0
+        const secondListingPrice = ethers.parseEther("2.0");
+        await tradingPlatform.connect(seller).listItem(tokenId2, secondListingPrice); // Listing ID 1
+
+        // Buy the first item
+        await tradingPlatform.connect(buyer).buyItem(0n, { value: LISTING_PRICE });
+        let listing1 = await tradingPlatform.listings(0n);
+        expect(listing1.active).to.be.false;
+
+        // Check second item is still active and unaffected
+        let listing2 = await tradingPlatform.listings(1n);
+        expect(listing2.active).to.be.true;
+        expect(listing2.price).to.equal(secondListingPrice);
+
+        // Buy the second item
+        await tradingPlatform.connect(buyer).buyItem(1n, { value: secondListingPrice });
+        listing2 = await tradingPlatform.listings(1n);
+        expect(listing2.active).to.be.false;
+    });
+
+    // Similar tests could be added for multiple concurrent auctions:
+    // - Create auction A for tokenId1, auction B for tokenId2.
+    // - Bidder1 bids on A.
+    // - Bidder2 bids on B.
+    // - End auction A. Check B is unaffected.
+    // - End auction B.
   });
 });
