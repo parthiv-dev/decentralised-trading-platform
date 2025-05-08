@@ -329,10 +329,6 @@ We refer to section [Trading Platform](#6-trading-platform) for a complete overv
 
 ### Security Considerations
 
-- Protection against Reentrancy attacks (DONE)
-- Access control using function modifiers and role-based access where necessary (DONE)
-- IF front-running is a  concern (IS IT?) => a front-running prevention, e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive operations (NOT DONE)
-
 As mentioned in section on the [TradingPlatform Contract](#tradingplatform-contract), we protected the trading platform against **reentrancy attacks** by making use of OpenZeppelin's [ReentrancyGuard](https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard).
 
 We also implement **access control** in [PokemonCard.sol](contracts/PokemonCard.sol) by using: 
