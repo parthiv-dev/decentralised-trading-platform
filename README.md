@@ -40,7 +40,9 @@ We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve d
 
 ## Setup Instructions
 
-To run the Pokémon Card dApp locally, follow these steps. 
+To run the Pokémon Card dApp locally, follow these steps.
+
+> Note: We faced some issues when trying to deploy and run on FireFox. We suggest that the user uses Chromium-based browsers.
 
 
 
@@ -121,16 +123,16 @@ Open your browser at [http://localhost:3000](http://localhost:3000) to interact 
 
 ##### 3.1. **Add Local Hardhat Network** in MetaMask:
 
-   * Open the MetaMask extension
-   - To get full-screen mode: Click on the **button with 3 dots** and select **Expand View**
-   -  Click the **network selector button** in the top-left corner.
-   * NEW: Click on **+ Add a custom network**
+- Open the MetaMask extension
+- To get full-screen mode: Click on the **button with 3 dots** and select **Expand View**
+- Click the **network selector button** in the top-left corner.
+- Click on **+ Add a custom network**
 
-   Fill in following specifications:
-   * **Network Name:** Hardhat Local
-   * **Default RPC URL:** [http://127.0.0.1:8545](http://127.0.0.1:8545)
-   * **Chain ID:** 31337
-   * **Currency Symbol:** PokeCoin
+Fill in following specifications:
+- **Network Name:** Hardhat Local
+- **Default RPC URL:** [http://127.0.0.1:8545](http://127.0.0.1:8545)
+- **Chain ID:** 31337
+- **Currency Symbol:** PokeCoin
 
 Now do the following:
 - Select **Save**
@@ -148,17 +150,11 @@ Now do the following:
 
 **In each browser profile:**
 
-NEW CORRECTED:
 1. Open Metamask and click on your current account (**Account 1** on the top by default). 
 2. A page with the title "Select Account" should open up. On this page select **+ Add account or hardware wallet**. 
 3. Select **Import account**
 4. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
 5. Switch to newly created account
-
-OLD IGNORE (@MATTEO): 
-1. Open MetaMask and click the account avatar (top-right).
-2. Select **Import Account**.
-3. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
 
 > **Tip:** **Account #0** is the deployer and has administrative privileges (such as minting, authorizing other minters etc.). We recommend to selecting **Account #0** for the first browser profile.
 
@@ -171,9 +167,7 @@ OLD IGNORE (@MATTEO):
 * **#2**: `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC`
     **Private Key:** `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a`
 
-NEW: MetaMask will now be connected to your local blockchain network named "Hardhat Local" with "PokeCoin" as your crypto currentcy.
-
-OLD IGNORE: MetaMask in both profiles is now connected to your local blockchain with test PokeCoin. (@MATTEO What do mean by both profiles? What do you mean by test ETH?)
+MetaMask will now be connected to your local blockchain network named "Hardhat Local" with "PokeCoin" as your crypto currentcy.
 
 
 ---
@@ -197,29 +191,43 @@ Underneath you will find 4 tabs(or 3 if you did not select account 0):
 - My Cards & Mint
 - Marketplace
 - Auctions
-- Admin Panel
+- Admin Panel (only for the contract owber at address #0)
 
 #### My Cards & Mint
 
-
+Here you can:
+- Mint new Pokemons (if you are authorized)
+- View your Pokemon Cards
+- Manage your cards i.e. list them for fixed price sale or auctions
+- Withdraw funds you made from (re-)selling Pokemons
 
 #### Marketplace
 
+Here you can:
+- View Pokemons which have been listed for fixed price sale
+- Buy Pokemons which other users have listed for fixed price sale
+
 #### Auctions
 
-#### Admin Panel
+Here you can:
+- View Pokemons which have been listed for the auction
+- Bid for Pokemons which other users have listed for fixed price sale
+- Close the auction after expiry of the auction duration
 
+>**Tip**: Set a low auction duration (e.g. 1 minute)
 
+#### Admin Panel (only for the contract owner)
 
+Here the owner of the contract can 
+- add/remove minters
+- pause/unpause the contract for security purposes
 
 
 ---
 
 ### 7. Tests (Optional)
 
-NEW: In a new termninal, in the **project root**, run the contract tests:
-
-OLD IGNORE (@MATTEO): Back in the **project root**, run the contract tests:
+In a new termninal, in the **project root**, run the contract tests:
 
 ```bash
 npx hardhat test
