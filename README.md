@@ -40,7 +40,13 @@ We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve d
 
 ## Setup Instructions
 
-To run the Pokémon Card dApp locally, follow these steps.
+To run the Pokémon Card dApp locally, follow these steps. We recommend the user to have atleast 4 seperate windows when setting up the local deployment:
+- Setup Instructions (this page)
+- A browser window with the MetaMask account open in full-screen mode
+- Terminal 1
+- Terminal 2
+
+TODO: Insert Photo
 
 ### Prerequisites
 
@@ -108,24 +114,35 @@ Open your browser at [http://localhost:3000](http://localhost:3000) to interact 
 
 ### 3. MetaMask Configuration
 
+
 1. **Add Local Hardhat Network** in MetaMask:
 
    * Open the MetaMask extension and click the network selector button in the top-left corner.
-   * Select **Add network** (or **Custom RPC**).
+   * NEW: Click on **+ Add a custom network**
+   * OLD IGNORE: Select **Add network** (or **Custom RPC**).
    * **Network Name:** Hardhat Local
    * **RPC URL:** [http://127.0.0.1:8545](http://127.0.0.1:8545)
    * **Chain ID:** 31337
-   * **Currency Symbol:** ETH
+   * **Currency Symbol:** PokeCoin
 
 2. **Import Pre-Funded Accounts**
 
+ If the user would like to test the interactive multi-user funtionalities, we recommend to open multiple instances of [http://localhost:3000](http://localhost:3000) and do step 3 for multiple instances.
+
    **In each browser profile:**
 
+   NEW CORRECTED:
+   1. Open Metamask and click on your current account (**Account 1** on the top by default). 
+   2. A page with the title "Select Account" should open up. On this page select **+ Add account or hardware wallet**. 
+   3. Select **Import account**
+   4. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
+
+    OLD IGNORE (@MATTEO): 
    1. Open MetaMask and click the account avatar (top-right).
    2. Select **Import Account**.
-   3. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
+   3. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output). We recommend to select **Account #0**.
 
-      > **Tip:** **Account #0** is the deployer and has administrative privileges.
+      > **Tip:** **Account #0** is the deployer and has administrative privileges (such as minting, authorizing other minters etc.).
 
    **Available accounts:**
 
@@ -136,14 +153,18 @@ Open your browser at [http://localhost:3000](http://localhost:3000) to interact 
    * **#2**: `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC`
      **Private Key:** `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a`
 
-MetaMask in both profiles is now connected to your local blockchain with test ETH.
+NEW: MetaMaks will now be connected to your local blockchain "Hardhat Local" with "PokeCoin" as your crypto currentcy.
+
+OLD IGNORE: MetaMask in both profiles is now connected to your local blockchain with test PokeCoin. (@MATTEO What do mean by both profiles? What do you mean by test ETH?)
 
 
 ---
 
 ### 5. Tests (Optional)
 
-Back in the **project root**, run the contract tests:
+NEW: In a new termninal, in the **project root**, run the contract tests:
+
+OLD IGNORE (@MATTEO): Back in the **project root**, run the contract tests:
 
 ```bash
 npx hardhat test
