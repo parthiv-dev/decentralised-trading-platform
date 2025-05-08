@@ -269,7 +269,7 @@ TODO for 3.1. Smart Contracts:
 
 - [ERC721Burnable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Burnable): To enable token holders destroy their tokens.
 - [ERC721Enumerable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Enumerable): To be able to call the `totalSupply()` function
-- [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts to pause the functionality marked as `whenNotPaused`. This is useful for emergency response.
+- [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts to pause the functionality marked as `whenNotPaused`. This is useful for emergency response when facing security issues.
 - [ERC721URIStorage](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721URIStorage): To allow updating token URIs for individual token IDs.
 - `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
 
@@ -300,10 +300,6 @@ This struct was populated when minting a Pokemon NFT token by calling constructo
 #### TradingPlatform Contract
 
 TODO for 3.1. Smart Contracts:
-- NFT contract for Pokemon cards following ERC271 contract
-- Comprehensive metadata for Pokemon characteristics
-- Secure minting functionalities
-- Access control
 
 - Card listing
 - Fixed-price sales
@@ -313,7 +309,18 @@ TODO for 3.1. Smart Contracts:
 - Security best practices in implementation
 - Simplicity
 
-The [TradingPlatform.sol](contracts\TradingPlatform.sol) is as the name says a contract for the trading platform where tokens can be listed for selling, auctioned and bought. Additionally, users are able to securely their earned funds (by buying and selling NFT tokens) to their wallet (Metamask). 
+The [TradingPlatform.sol](contracts\TradingPlatform.sol) is as the name says a contract for the trading platform. tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users are able to securely withdraw their earned funds which they have earned by (re-)selling NFT tokens) to their wallet.
+
+We have implemented **best practices for security** by making use of existing OpenZeppelin contracts:
+- [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): to prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
+- [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721): A required interface of an ERC721 compliant contract.
+- ReentrancyGuard
+- [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts to pause the functionality marked as `whenNotPaused`. This is useful for emergency response when facing security issues.
+- `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
+
+> **Difference bettween ERC721 & IERC721**: [ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) is the actual implementation standard for non-fungible tokens (NFTs), defining the rules and functions a smart contract must implement. [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721), on the other hand, is the interface that specifies the functions and events expected to be present in a contract adhering to the ERC721 standard
+
+### Interaction between PokemonCard & TradingPlatform
 
 [TradingPlatform.sol](contracts\TradingPlatform.sol) incorporates [PokemonCard.sol](contracts\PokemonCard.sol) in the sense that one first deploys [PokemonCard.sol](contracts\PokemonCard.sol), receives its contract address and then calls (the constructor of) [TradingPlatform.sol](contracts\TradingPlatform.sol), giving the contract address of [PokemonCard.sol](contracts\PokemonCard.sol) as an input. Furthermore, [TradingPlatform.sol](contracts\TradingPlatform.sol) calls several functions of [PokemonCard.sol](contracts\PokemonCard.sol) in its own functions. 
 
