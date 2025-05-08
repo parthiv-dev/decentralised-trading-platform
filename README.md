@@ -306,7 +306,7 @@ This struct was populated when minting a Pokemon NFT token by calling the constr
 
 #### TradingPlatform Contract
 
-The [TradingPlatform.sol](contracts/TradingPlatform.sol) is, as the name says, a contract for the trading platform. Tokens can be listed for **fixed-price sales** and **auctions**. Consequently, other users can buy and bid respectively. Additionally, users can securely **withdraw** their earned funds, which they have earned by (re-)selling NFT tokens, to their wallet.
+The [TradingPlatform.sol](contracts/TradingPlatform.sol) contract is, as the name says, a contract for the trading platform. Tokens can be listed for **fixed-price sales** and **auctions**. Consequently, other users can buy and bid respectively. Additionally, users can securely **withdraw** their earned funds, which they have earned by (re-)selling NFT tokens, to their wallet.
 
 We have implemented **best practices for security** by making use of existing OpenZeppelin contracts:
 - [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): To prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
