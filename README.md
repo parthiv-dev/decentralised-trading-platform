@@ -40,7 +40,9 @@ We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve d
 
 ## Setup Instructions
 
-To run the Pokémon Card dApp locally, follow these steps. We recommend the user to have atleast 4 seperate windows when setting up the local deployment:
+To run the Pokémon Card dApp locally, follow these steps. 
+
+> **Tip:** We recommend the user to have atleast 4 seperate windows when setting up the local deployment:
 - Setup Instructions (this page)
 - A browser window with the MetaMask account open in full-screen mode
 - Terminal 1
@@ -52,7 +54,8 @@ TODO: Insert Photo
 
 * **Node.js & npm**: Download and install from [nodejs.org](https://nodejs.org/).
 * **MetaMask**: Install the browser extension from [metamask.io](https://metamask.io/).
-* **Tip:** For a deeper experience and to simulate multiple users, consider using separate browser instances or profiles, each with MetaMask installed.
+
+> **Tip:** For a deeper experience and to simulate multiple users, consider using separate browser instances or profiles, each with MetaMask installed. (@Matteo is this needed here?)
 
 ---
 
@@ -127,31 +130,31 @@ Open your browser at [http://localhost:3000](http://localhost:3000) to interact 
 
 2. **Import Pre-Funded Accounts**
 
- If the user would like to test the interactive multi-user funtionalities, we recommend to open multiple instances of [http://localhost:3000](http://localhost:3000) and do step 3 for multiple instances.
+ > **Tip:** If the user would like to simulate the interactive multi-user funtionalities, we recommend to open multiple instances/windows of [http://localhost:3000](http://localhost:3000) and do step 3 for browser profiles.
 
-   **In each browser profile:**
+    **In each browser profile:**
 
-   NEW CORRECTED:
-   1. Open Metamask and click on your current account (**Account 1** on the top by default). 
-   2. A page with the title "Select Account" should open up. On this page select **+ Add account or hardware wallet**. 
-   3. Select **Import account**
-   4. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
+    NEW CORRECTED:
+    1. Open Metamask and click on your current account (**Account 1** on the top by default). 
+    2. A page with the title "Select Account" should open up. On this page select **+ Add account or hardware wallet**. 
+    3. Select **Import account**
+    4. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
 
     OLD IGNORE (@MATTEO): 
-   1. Open MetaMask and click the account avatar (top-right).
-   2. Select **Import Account**.
-   3. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output). We recommend to select **Account #0**.
+    1. Open MetaMask and click the account avatar (top-right).
+    2. Select **Import Account**.
+    3. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output). We recommend to select **Account #0**.
 
-      > **Tip:** **Account #0** is the deployer and has administrative privileges (such as minting, authorizing other minters etc.).
+    > **Tip:** **Account #0** is the deployer and has administrative privileges (such as minting, authorizing other minters etc.).
 
    **Available accounts:**
 
-   * **#0**: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
-     **Private Key:** `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
-   * **#1**: `0x70997970C51812dc3A010C7d01b50e0d17dc79C8`
-     **Private Key:** `0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d`
-   * **#2**: `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC`
-     **Private Key:** `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a`
+    * **#0**: `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`
+        **Private Key:** `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
+    * **#1**: `0x70997970C51812dc3A010C7d01b50e0d17dc79C8`
+        **Private Key:** `0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d`
+    * **#2**: `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC`
+        **Private Key:** `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a`
 
 NEW: MetaMaks will now be connected to your local blockchain "Hardhat Local" with "PokeCoin" as your crypto currentcy.
 
