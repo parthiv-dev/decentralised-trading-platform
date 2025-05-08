@@ -228,24 +228,26 @@ This script will mint all cards from ID 1 through 100 using metadata on IPFS. Th
 
 ## Technical Documentation
 
+> Note: Some of the links to files might not work on the testers file system because of switching of / and \. For windows user, there should no issues if this [README](README.md) is read on the local files system. However the links will not work on GitHub.
+
 ### Smart Contracts
 
 We implement two Solidity contracts:
-- [PokemonCard.sol](contracts\PokemonCard.sol): To **securely mint** Pokemon NFTs and **store comprehensive metadata for pokemon characteristics**
--  [TradingPlatform.sol](contracts\TradingPlatform.sol): To provide a trading platform for users to sell, auction and buy Pokemon NFTs.
+- [PokemonCard.sol](contracts/PokemonCard.sol): To **securely mint** Pokemon NFTs and **store comprehensive metadata for pokemon characteristics**
+-  [TradingPlatform.sol](contracts/TradingPlatform.sol): To provide a trading platform for users to sell, auction and buy Pokemon NFTs.
 
 We have focussed on **simplicity** and intuitive understanding of the contracts by **minimizing code redundancy** and adding **meaningful comments** to each important section.
 
 #### PokemonCard Contract
 
-[PokemonCard.sol](contracts\PokemonCard.sol) is a NFT contract for Pokemons based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition, we used the following extensions:
+[PokemonCard.sol](contracts/PokemonCard.sol) is a NFT contract for Pokemons based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition, we used the following extensions:
 
 
 - [ERC721Burnable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Burnable): To enable token holders destroy their tokens.
 - [ERC721Enumerable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Enumerable): To be able to call the `totalSupply()` function
 - [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts to pause the functionality marked as `whenNotPaused`. This is useful for emergency response when facing security issues.
 - [ERC721URIStorage](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721URIStorage): To allow updating token URIs for individual token IDs.
-- `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
+- `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts/TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
 
 To be able to store **comprehensive metadata for Pokemon characteristics** we defined a Pokemon struct:
 
@@ -262,7 +264,7 @@ To be able to store **comprehensive metadata for Pokemon characteristics** we de
     }
 ```
 
-This struct was populated when minting a Pokemon NFT token by calling the constructor of [PokemonCard.sol](contracts\PokemonCard.sol). In addition, we stored the metadata and images of Pokémons in a decentralised IPFS. More on this in the section [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
+This struct was populated when minting a Pokemon NFT token by calling the constructor of [PokemonCard.sol](contracts/PokemonCard.sol). In addition, we stored the metadata and images of Pokémons in a decentralised IPFS. More on this in the section [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
 
 **Access control** is ensured by: 
 - the in-built `Ownable` (modifier)
@@ -283,20 +285,20 @@ TODO for 3.1. Smart Contracts:
 - Security best practices in implementation
 - Simplicity
 
-The [TradingPlatform.sol](contracts\TradingPlatform.sol) is, as the name say,s a contract for the trading platform. Tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users can securely withdraw their earned funds, which they have earned by (re-)selling NFT tokens) to their wallet.
+The [TradingPlatform.sol](contracts/TradingPlatform.sol) is, as the name say,s a contract for the trading platform. Tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users can securely withdraw their earned funds, which they have earned by (re-)selling NFT tokens) to their wallet.
 
 We have implemented **best practices for security** by making use of existing OpenZeppelin contracts:
 - [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): To prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
 - [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721): A required interface of an [ERC271 compliant contract](https://docs.openzeppelin.com/contracts/4.x/erc721).
 - [ReentrancyGuard](https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard): To Protects functions marked `nonReentrant` against reentrancy attacks.
 - [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts to pause the functionality marked as `whenNotPaused`. This is useful for emergency response when facing security issues.
-- `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
+- `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts/TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
 
 > **Difference between ERC721 & IERC721**: [ERC271](https://docs.openzeppelin.com/contracts/4.x/erc721) is the actual implementation standard for non-fungible tokens (NFTs), defining the rules and functions a smart contract must implement. [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721), on the other hand, is the interface that specifies the functions and events expected to be present in a contract adhering to the ERC721 standard
 
 ### Interaction between PokemonCard & TradingPlatform
 
-[TradingPlatform.sol](contracts\TradingPlatform.sol) incorporates [PokemonCard.sol](contracts\PokemonCard.sol) in the sense that one first deploys [PokemonCard.sol](contracts\PokemonCard.sol), receives its contract address and then calls (the constructor of) [TradingPlatform.sol](contracts\TradingPlatform.sol), giving the contract address of [PokemonCard.sol](contracts\PokemonCard.sol) as an input. Furthermore, [TradingPlatform.sol](contracts\TradingPlatform.sol) calls several functions of [PokemonCard.sol](contracts\PokemonCard.sol) in its own functions. 
+[TradingPlatform.sol](contracts/TradingPlatform.sol) incorporates [PokemonCard.sol](contracts/PokemonCard.sol) in the sense that one first deploys [PokemonCard.sol](contracts/PokemonCard.sol), receives its contract address and then calls (the constructor of) [TradingPlatform.sol](contracts/TradingPlatform.sol), giving the contract address of [PokemonCard.sol](contracts/PokemonCard.sol) as an input. Furthermore, [TradingPlatform.sol](contracts/TradingPlatform.sol) calls several functions of [PokemonCard.sol](contracts/PokemonCard.sol) in its own functions. 
 
 
 ### Frontend Development
@@ -321,7 +323,7 @@ MATTEO!!!
 
 As mentioned in section on the [TradingPlatform Contract](#tradingplatform-contract), we protected the trading platform against **reentrancy attacks** by making use of OpenZeppelin's [ReentrancyGuard](https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard).
 
-We also implement **access control** in [PokemonCard.sol](contracts\PokemonCard.sol) by using: 
+We also implement **access control** in [PokemonCard.sol](contracts/PokemonCard.sol) by using: 
 - the in-built `Ownable` (modifier)
 - an auxiliary mapping `_minters` which maps user addresses to bool (true = allowed to mint; false = not allowed to mint)
 - a modifier `onlyAuthorized` which checks if either of the above is true for a given user
@@ -341,7 +343,7 @@ For additional metadata for each Pokémon we referred to the [PokeApi](https://p
 
 [Pinata Cloud](https://pinata.cloud/) is a distributed storage platform used e.g. OpenSea to achieve secure, scalable storage with IPFS's decentralized infrastructure.
 
-IMPORTANT NOTE: Since we integrated metadata storage through IPFS, there was theoretically no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts\PokemonCard.sol) contract! For simplicity and clarity the Pokemon struct and associated functions where kept to enable proper functioning of the trading platform without IPFS integration. For reference, this is the Pokémon struct:
+IMPORTANT NOTE: Since we integrated metadata storage through IPFS, there was theoretically no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts/PokemonCard.sol) contract! For simplicity and clarity the Pokemon struct and associated functions where kept to enable proper functioning of the trading platform without IPFS integration. For reference, this is the Pokémon struct:
 
 ```
     struct Pokemon {
