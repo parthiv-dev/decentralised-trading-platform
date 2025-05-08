@@ -370,8 +370,6 @@ This struct was populated  by the constructor when minting a Pokémon NFT token.
 
 ## Demonstration
 
-See [video]().
-
 See [Polybox Link](https://polybox.ethz.ch/index.php/s/9X9GFbmWcCxp6zm)
 
 ## Group Work Specifications
