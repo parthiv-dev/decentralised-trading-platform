@@ -283,16 +283,7 @@ We have implemented **best practices for security** by making use of existing Op
 
 ### Frontend Development
 
-TODO for 3.2 Front Development:
-- Intuitive user interface
-- Wallet connection functionality
-- Comprehensive card marketplace and trading interface
-- Proper Web3 integration through event listeners for contract updates, transaction  handling and wallet integration
-
-TODO for 4.1 Development Environment:
-- The development environment setup should be documented to ensure reproducibility
-
-MATTEO!!!
+We refer to section [Trading Platform](#6-trading-platform) for a complete overview of the interface.
 
 
 ### Security Considerations
@@ -342,9 +333,7 @@ This struct was populated  by the constructor when minting a Pokémon NFT token.
 
 ## Demonstration
 
-TODO for 3.4 Documentation and Presentation, 4.1 Development Environment
-- Demonstrate core functionality + security features while explaining key technical decisions
-- Comprehensive test suite
+See [video]().
 
 ## Group Work Specifications
 
