@@ -264,17 +264,7 @@ This struct was populated when minting a Pokemon NFT token by calling the constr
 
 #### TradingPlatform Contract
 
-TODO for 3.1. Smart Contracts:
-
-- Card listing
-- Fixed-price sales
-- Auctions
-- Secure withdrawal patterns
-- Understanding of smart contract optimisation
-- Security best practices in implementation
-- Simplicity
-
-The [TradingPlatform.sol](contracts/TradingPlatform.sol) is, as the name says, a contract for the trading platform. Tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users can securely withdraw their earned funds, which they have earned by (re-)selling NFT tokens, to their wallet.
+The [TradingPlatform.sol](contracts/TradingPlatform.sol) is, as the name says, a contract for the trading platform. Tokens can be listed for **fixed-price sales** and **auctions**. Consequently, other users can buy and bid respectively. Additionally, users can securely **withdraw** their earned funds, which they have earned by (re-)selling NFT tokens, to their wallet.
 
 We have implemented **best practices for security** by making use of existing OpenZeppelin contracts:
 - [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): To prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
@@ -357,10 +347,6 @@ TODO for 3.4 Documentation and Presentation, 4.1 Development Environment
 
 ## Group Work Specifications
 
-TODO for 6. Group Work Specifications
-- Clear documentation is required for individual contributions
-- The distribution of work should be equitable and clearly documented in the project submissions
-
 We worked closely together, spending hours on Discord calls to collaborate on this project.
 
 Matteo:
@@ -373,8 +359,6 @@ Parthiv:
 - Leading documentation of work in [README](README.md) and [WIKI](WIKI.md)
 
 ## Use of GenAI
-TODO for 8. Use of GenAI:
-- Indicate which AI tools you have used
 
 We used Github Co-Pilot, Gemini and ChatGPT for various tasks:
 - Understanding of tasks and technical terms in the coursework description
@@ -390,29 +374,13 @@ We did not use or barely used GenAI for:
 
 ## Code Quality
 
-TODO for 4.2 Code Quality Standards:
-- minimisation of code redundancy
-- proper implementation
-of design patterns
-- code readability and organisation
-- quality of comments and documentation
-- test coverage
-- follow [Official Solidity style guide](https://soliditylang.org/)
-- Proper error handling throughout the codebase
-
 We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We were also inspired by OpenZeppelin's way of commenting, e.g. [here](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol).
 
-We implemented extensive test coverage for both the PokemonCard and the TradingPlatform contracts in the [test folder](test) to ensure proper functionality of the whole trading system.
+We implemented extensive **test coverage** for both the PokemonCard and the TradingPlatform contracts in the [test folder](test) to ensure proper **error handling** throughout the codebase. 
 
-
-
+Lastly, we have focussed on **simplicity** and intuitive understanding of the contracts by **minimizing code redundancy** and adding **meaningful comments** to each important section.
 
 
 ## Conclusion
-
-TODO for 2. Learning Objectives:
-- Web3-integrated frontend applications
-- Security best practices in DeFi development
-- Understanding NFT standards + token economics
 
 In this project we learned about Web3-integrated frontend applications, security best practices in DeFi development, and got an introduciton to NFT standards and token economics.
