@@ -5,6 +5,7 @@ Matteo Pelossi & Parthiv Kangsabanik
 ## Table of Contents
 
 - [Introduction](#introduction)
+
 - [Setup Instructions](#setup-instructions)
   - [Prerequisites](#prerequisites)
   - [1. Backend (Smart Contracts)](#1-backend-smart-contracts)
@@ -20,6 +21,7 @@ Matteo Pelossi & Parthiv Kangsabanik
     - [Admin Panel (only for the contract owner)](#admin-panel-only-for-the-contract-owner)
   - [7. Tests (Optional)](#7-tests-optional)
   - [8. Batch Minting NFTs (Optional)](#8-batch-minting-nfts-optional)
+
 - [Technical Documentation](#technical-documentation)
   - [Smart Contracts](#smart-contracts)
     - [PokemonCard Contract](#pokemoncard-contract)
@@ -29,6 +31,14 @@ Matteo Pelossi & Parthiv Kangsabanik
   - [Security Considerations](#security-considerations)
   - [Advanced Enhancements](#advanced-enhancements)
     - [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
+
+- [Demonstration](#demonstration)
+- [Group Work Specifications](#group-work-specifications)  
+  - [Matteo](#matteo)  
+  - [Parthiv](#parthiv)  
+- [Use of GenAI](#use-of-genai)
+- [Code Quality](#code-quality)
+- [Conclusion](#conclusion)
 
 
 ## Introduction
