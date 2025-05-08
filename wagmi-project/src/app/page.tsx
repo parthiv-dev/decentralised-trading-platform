@@ -1941,20 +1941,17 @@ const tradingPlatformAbi =  [
   }
 ] as const // <-- Important: use "as const"
 
-// Contract Addresses from your old App.js
-const contractAddresses = {
-  [31337]: { // localhost (Hardhat)
-    name: 'Localhost (Hardhat)',
-    pokemonCardAddress: '0x5FbDB2315678afecb367f032d93F642f64180aa3' as `0x${string}`,
-    tradingPlatformAddress: '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512' as `0x${string}`,
-  },
-  [11155111]: { // sepolia
-    name: 'Sepolia Testnet',
-    pokemonCardAddress: '0x3ff18B652E50419c81dbAeddC02B7E42ce0D7bC0' as `0x${string}`,
-    tradingPlatformAddress: '0xBB1186fD51d9eeAFA3A8FDB9144AEA32cb2CF98e' as `0x${string}`,
-  }
-  // Add other networks here if needed
-};
+// Contract Addresses imported from json 
+// Import contract addresses from the JSON file
+import deployedAddressesJson from '../contracts/deployedAddresses.json'; 
+
+interface ContractConfig {
+  name: string;
+  pokemonCardAddress: `0x${string}`;
+  tradingPlatformAddress: `0x${string}`;
+}
+
+const contractAddresses: Record<string, ContractConfig> = deployedAddressesJson;
 
 function App() {
   const account = useAccount()
@@ -3641,8 +3638,8 @@ function App() {
             {activeSection === 'admin' && contractOwner && account.address?.toLowerCase() === contractOwner.toLowerCase() && (
               <div className="admin-panel">
                 <h2>👑 Admin Panel (PokemonCard Contract)</h2>
-                <p style={{color: '#1a237e'}}>Contract Owner: <strong style={{color: '#0d47a1'}}>{contractOwner}</strong></p>
-                <p><small style={{color: '#555'}}>This panel is exclusively for you, the contract owner.</small></p>
+                <p style={{color: '#7E47FF'}}>Contract Owner: <strong style={{color: '#0165FF'}}>{contractOwner}</strong></p>
+                <p><small style={{color: '#3E95F6'}}>This panel is exclusively for you, the contract owner.</small></p>
 
                 <div style={{ marginTop: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border-color-dark)' }}>
                   <h4>Contract Stats</h4>
@@ -3711,7 +3708,7 @@ function App() {
       {!currentNetworkConfig && account.status === 'connected' && (
         <p style={{ color: 'orange', fontWeight: 'bold' }}>
           ⚠️ Your wallet is connected to an unsupported network (Chain ID: {account.chainId}).
-          Please switch to Localhost (31337) or Sepolia (11155111).
+          Please switch to supported network Localhost (31337).
         </p>
       )}
 

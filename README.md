@@ -51,6 +51,18 @@ TODO: @Matteo:
 
 - How to install dependencies
 
+Instructions for them:
+In the root directory (c:\Users\Carti\Desktop\ETH\Bsc\6 Semester\DeFi\defi_trading_platform\):  
+```Run npm install``` (for Hardhat dependencies).
+Run npx hardhat compile (to compile contracts and generate artifacts/).  
+```Run npx hardhat node``` (to start a local blockchain).
+In a new terminal, run   
+```npx hardhat run scripts/deploy.js --network localhost``` (to deploy contracts; this will update wagmi-project/src/contracts/deployedAddresses.json).
+In the wagmi-project directory (c:\Users\Carti\Desktop\ETH\Bsc\6 Semester\DeFi\defi_trading_platform\wagmi-project\):  
+```Run npm install```  (for frontend dependencies).  
+```Run npm run dev```.
+Configure their wallet to their local Hardhat node.
+
 - How to to build or compile
 
 - How to to run tests
