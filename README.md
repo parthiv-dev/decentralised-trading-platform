@@ -193,7 +193,22 @@ At the very top you are going to see some basic account and wallet information. 
 
 Next you will see the title, as well as your Pokemon contract and Trading Platform contract address. 
 
-Under
+Underneath you will find 4 tabs(or 3 if you did not select account 0): 
+- My Cards & Mint
+- Marketplace
+- Auctions
+- Admin Panel
+
+#### My Cards & Mint
+
+
+
+#### Marketplace
+
+#### Auctions
+
+#### Admin Panel
+
 
 
 
