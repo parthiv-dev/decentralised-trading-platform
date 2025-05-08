@@ -23,7 +23,7 @@ export function AccountConnect(props: AccountConnectProps) {
         color: 'var(--primary-color)', 
         fontSize: '1.5em'
       }}>
-        Account
+        👤 Account
       </h2>
       {account.status === 'connected' ? (
         <div style={{ 
@@ -36,15 +36,15 @@ export function AccountConnect(props: AccountConnectProps) {
           boxShadow: 'none' 
         }}>
           <p style={{ margin: '5px 0' }}>
-            <strong>Status:</strong> <span style={{ color: '#27ae60', fontWeight: 'bold' }}>{account.status}</span>
+            <strong>Status:</strong> <span style={{ color: '#27ae60', fontWeight: 'bold' }}>✅ {account.status}</span>
           </p>
           {account.addresses && account.addresses.length > 0 && (
             <p style={{ margin: '5px 0' }}>
-              <strong>Address:</strong> <span style={{ fontFamily: 'monospace', fontSize: '0.9em', wordBreak: 'break-all' }}>{account.addresses[0]}</span>
+              <strong>🆔 Address:</strong> <span style={{ fontFamily: 'monospace', fontSize: '0.9em', wordBreak: 'break-all' }}>{account.addresses[0]}</span>
             </p>
           )}
           <p style={{ margin: '5px 0' }}>
-            <strong>Chain ID:</strong> {account.chainId}
+            <strong>🔗 Chain ID:</strong> {account.chainId}
           </p>
           <button 
             type="button" 
@@ -60,13 +60,13 @@ export function AccountConnect(props: AccountConnectProps) {
               fontWeight: '500' // Consistent with global button
             }}
           >
-            Disconnect
+            🔌 Disconnect
           </button>
         </div>
       ) : account.status === 'connecting' || account.status === 'reconnecting' ? (
-        <p>Status: {account.status}...</p>
+        <p>⏳ Status: {account.status}...</p>
       ) : ( // Disconnected status
-        <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontStyle: 'italic' }}>Status: {account.status}</p>
+        <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontStyle: 'italic' }}>🔌 Status: {account.status}</p>
       )} 
 
 
@@ -87,7 +87,7 @@ export function AccountConnect(props: AccountConnectProps) {
             color: 'var(--primary-color)', 
             fontSize: '1.3em'
           }}>
-            Connect
+            🔗 Connect
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}> {/* Buttons will inherit global styles */}
             {connectors.map((connector) => (
@@ -104,13 +104,13 @@ export function AccountConnect(props: AccountConnectProps) {
                 }}
                 // Removed JS hover effects, rely on CSS :hover from globals.css
               >
-                {connector.name}
+                🔌 {connector.name}
               </button>
             ))}
           </div>
           {/* Ensure status and error messages here are also dark */}
-          {status && status !== 'idle' && <div style={{ marginTop: '15px', color: 'var(--text-dark)', opacity: 0.8 }}>Connection Status: {status}</div>}
-          {connectError && <div style={{ marginTop: '10px', color: '#e74c3c', fontWeight: 'bold' }}>Error: {connectError?.message}</div>}
+          {status && status !== 'idle' && <div style={{ marginTop: '15px', color: 'var(--text-dark)', opacity: 0.8 }}>ℹ️ Connection Status: {status}</div>}
+          {connectError && <div style={{ marginTop: '10px', color: '#e74c3c', fontWeight: 'bold' }}>❌ Error: {connectError?.message}</div>}
         </div>
       )}
     </div>

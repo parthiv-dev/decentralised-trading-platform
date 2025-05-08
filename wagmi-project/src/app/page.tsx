@@ -1955,7 +1955,6 @@ const contractAddresses: Record<string, ContractConfig> = deployedAddressesJson;
 
 function App() {
   const account = useAccount()
-  const [newName, setNewName] = useState('')
   const [userPokemonIds, setUserPokemonIds] = useState<string[]>([])
   const [rawOwnedPokemonDetails, setRawOwnedPokemonDetails] = useState<DisplayPokemonData[]>([]); // Stores base data without market status
   // ownedPokemonDetails will be derived using useMemo later
@@ -1991,7 +1990,6 @@ function App() {
 
   // IPFS Configuration
   const IPFS_METADATA_CID = 'bafybeib3a5is3s42srpxived3bdh7y3vwu6lozo6w7htjedcflnem4c2bu';
-  // const IPFS_IMAGES_CID = 'bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua'; // Not directly used if image URI is in metadata JSON
   const IPFS_GATEWAY = 'https://ipfs.io/ipfs/';
 
   // Helper to resolve IPFS URIs
@@ -2043,6 +2041,7 @@ function App() {
   // UI State
   const [activeSection, setActiveSection] = useState<'myCards' | 'marketplace' | 'auctions' | 'admin'>('myCards');
 
+  const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
   // Withdrawal State
   const [pendingWithdrawalAmount, setPendingWithdrawalAmount] = useState<bigint>(0n);
   const [withdrawStatus, setWithdrawStatus] = useState('');
@@ -2052,6 +2051,14 @@ function App() {
   const currentNetworkConfig = account.chainId ? contractAddresses[account.chainId as keyof typeof contractAddresses] : null;
   const POKEMON_CARD_ADDRESS = currentNetworkConfig?.pokemonCardAddress;
   const TRADING_PLATFORM_ADDRESS = currentNetworkConfig?.tradingPlatformAddress;
+
+  // Effect to update current time periodically for UI updates (e.g., auction end times)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentTime(Math.floor(Date.now() / 1000));
+    }, 5000); // Update every 5 seconds
+    return () => clearInterval(intervalId); // Cleanup on component unmount
+  }, []);
 
   // --- Wagmi Hooks for Contract Interactions ---
   const { writeContractAsync, data: writeTxHash, isPending: isWritePending, error: writeError, reset: resetWriteContract } = useWriteContract();
@@ -2097,7 +2104,7 @@ function App() {
       setIsContractPaused(fetchedPausedStatus as boolean);
     }
     setIsLoadingPausedStatus(pausedStatusLoading);
-  });
+  }, [fetchedPausedStatus, pausedStatusLoading]);
   useEffect(() => {
     if (fetchedOwner) setContractOwner(fetchedOwner as `0x${string}`);
     setIsLoadingOwner(ownerLoadingStatus);
@@ -2777,25 +2784,123 @@ function App() {
     }
   });
 
-  // Watch for Auction events
-  const auctionEventsToWatch: ('AuctionCreated' | 'BidPlaced' | 'AuctionEnded' | 'AuctionCancelled')[] = ['AuctionCreated', 'BidPlaced', 'AuctionEnded', 'AuctionCancelled'];
-  auctionEventsToWatch.forEach(eventName => {
-    useWatchContractEvent({
-      address: TRADING_PLATFORM_ADDRESS,
-      abi: tradingPlatformAbi,
-      eventName: eventName,
-      enabled: !!TRADING_PLATFORM_ADDRESS,
-      onLogs(logs) {
-        logs.forEach(log => {
-          console.log(`[Event Watcher] ${eventName} event:`, log.args);
-          setRefreshAuctionsTrigger(prev => prev + 1); // Refresh auction list
-          if (eventName === 'AuctionEnded' || eventName === 'AuctionCancelled') {
-            refetchBalance(); // Token ownership might change
-            if (refetchPendingWithdrawals) refetchPendingWithdrawals(); // Seller might have funds
+  // --- Auction Event Watchers for real-time updates ---
+
+  // AuctionCreated
+  useWatchContractEvent({
+    address: TRADING_PLATFORM_ADDRESS,
+    abi: tradingPlatformAbi,
+    eventName: 'AuctionCreated',
+    enabled: !!TRADING_PLATFORM_ADDRESS && !!POKEMON_CARD_ADDRESS && !!publicClient,
+    async onLogs(logs) {
+      console.log('[Event Watcher] AuctionCreated logs received:', logs.length);
+      let newAuctionsFound = false;
+      for (const log of logs) {
+        const args = log.args as { auctionId?: bigint; seller?: `0x${string}`; tokenId?: bigint; startingPrice?: bigint; endTime?: bigint };
+        if (!args.auctionId || !args.seller || args.tokenId === undefined || !args.startingPrice || !args.endTime) continue;
+
+        console.log(`[Event Watcher] AuctionCreated: ID ${args.auctionId.toString()}, TokenID: ${args.tokenId.toString()}`);
+        // Check if publicClient and POKEMON_CARD_ADDRESS are available before calling fetchPokemonDisplayData
+        if (!publicClient || !POKEMON_CARD_ADDRESS) {
+          console.warn(`[Event Watcher] AuctionCreated: publicClient or POKEMON_CARD_ADDRESS not available. Skipping detail fetch for auction ${args.auctionId.toString()}. Full refresh will handle.`);
+          newAuctionsFound = true; // Still trigger a refresh
+          continue;
+        }
+        const pokemonData = await fetchPokemonDisplayData(args.tokenId.toString(), publicClient, POKEMON_CARD_ADDRESS);
+        if (!pokemonData) {
+          console.warn(`[Event Watcher] AuctionCreated: Could not fetch Pokemon data for token ${args.tokenId.toString()} (Auction ID: ${args.auctionId.toString()}). Full refresh will handle.`);
+          newAuctionsFound = true; // Still trigger a refresh
+          continue;
+        }
+
+        const newAuction: AuctionItem = {
+          auctionId: args.auctionId.toString(),
+          seller: args.seller,
+          tokenId: args.tokenId.toString(),
+          pokemonData,
+          startingPrice: formatEther(args.startingPrice),
+          startingPriceInWei: args.startingPrice,
+          endTime: Number(args.endTime),
+          highestBidder: '0x0000000000000000000000000000000000000000',
+          highestBid: '0',
+          highestBidInWei: 0n,
+          active: true,
+          ended: false,
+        };
+
+        setActiveAuctions(prevAuctions => {
+          const existingAuctionIndex = prevAuctions.findIndex(a => a.auctionId === newAuction.auctionId);
+          if (existingAuctionIndex !== -1) {
+            const updatedAuctions = [...prevAuctions];
+            updatedAuctions[existingAuctionIndex] = { ...updatedAuctions[existingAuctionIndex], ...newAuction };
+            return updatedAuctions;
           }
+          return [...prevAuctions, newAuction];
         });
+        newAuctionsFound = true;
       }
-    });
+      if (newAuctionsFound) {
+        setRefreshAuctionsTrigger(prev => prev + 1); // Trigger full refresh for consistency
+      }
+    }
+  });
+
+  // AuctionEnded
+  useWatchContractEvent({
+    address: TRADING_PLATFORM_ADDRESS,
+    abi: tradingPlatformAbi,
+    eventName: 'AuctionEnded',
+    enabled: !!TRADING_PLATFORM_ADDRESS,
+    onLogs(logs) {
+      console.log('[Event Watcher] AuctionEnded logs received:', logs.length);
+      logs.forEach(log => {
+        const args = log.args as { auctionId?: bigint; winner?: `0x${string}`; seller?: `0x${string}`; winningBid?: bigint };
+        if (args.auctionId === undefined) return;
+
+        const endedAuctionId = args.auctionId.toString();
+        console.log(`[Event Watcher] AuctionEnded: ID ${endedAuctionId}, Winner: ${args.winner}, Price: ${args.winningBid ? formatEther(args.winningBid) : 'N/A'}`);
+
+        setActiveAuctions(prevAuctions =>
+          prevAuctions.map(auction =>
+            auction.auctionId === endedAuctionId
+              ? {
+                  ...auction,
+                  active: false,
+                  ended: true,
+                  highestBidder: args.winner || auction.highestBidder,
+                  highestBid: args.winningBid ? formatEther(args.winningBid) : auction.highestBid,
+                  highestBidInWei: args.winningBid || auction.highestBidInWei,
+                }
+              : auction
+          )
+        );
+        refetchBalance();
+        if (refetchPendingWithdrawals) refetchPendingWithdrawals();
+        setRefreshAuctionsTrigger(prev => prev + 1); // Trigger full refresh for consistency
+      });
+    }
+  });
+
+  // AuctionCancelled
+  useWatchContractEvent({
+    address: TRADING_PLATFORM_ADDRESS,
+    abi: tradingPlatformAbi,
+    eventName: 'AuctionCancelled',
+    enabled: !!TRADING_PLATFORM_ADDRESS,
+    onLogs(logs) {
+      console.log('[Event Watcher] AuctionCancelled logs received:', logs.length);
+      logs.forEach(log => {
+        const args = log.args as { auctionId?: bigint; seller?: `0x${string}`; tokenId?: bigint };
+        if (args.auctionId === undefined) return;
+        const cancelledAuctionId = args.auctionId.toString();
+        console.log(`[Event Watcher] AuctionCancelled: ID ${cancelledAuctionId}`);
+        setActiveAuctions(prevAuctions =>
+          prevAuctions.map(auction => auction.auctionId === cancelledAuctionId ? { ...auction, active: false, ended: true } : auction)
+        );
+        refetchBalance();
+        setRefreshAuctionsTrigger(prev => prev + 1); // Trigger full refresh for consistency
+      });
+    }
   });
 
     // Watch for MinterSetTrue and MinterSetFalse events to update minter list
@@ -2816,7 +2921,7 @@ function App() {
         });
       }
     });
-  
+
     useWatchContractEvent({
       address: POKEMON_CARD_ADDRESS,
       abi: pokemonCardAbi,
@@ -2834,6 +2939,35 @@ function App() {
         });
       }
     });
+
+  // BidPlaced
+  useWatchContractEvent({
+    address: TRADING_PLATFORM_ADDRESS,
+    abi: tradingPlatformAbi,
+    eventName: 'BidPlaced',
+    enabled: !!TRADING_PLATFORM_ADDRESS,
+    onLogs(logs) {
+      console.log('[Event Watcher] BidPlaced logs received:', logs.length);
+      logs.forEach(log => {
+        const args = log.args as { auctionId?: bigint; bidder?: `0x${string}`; amount?: bigint };
+        if (args.auctionId === undefined || !args.bidder || args.amount === undefined) return;
+
+        const bidAuctionId = args.auctionId.toString();
+        console.log(`[Event Watcher] BidPlaced on Auction ID ${bidAuctionId} by ${args.bidder} for ${formatEther(args.amount)} ETH`);
+
+        setActiveAuctions(prevAuctions =>
+          prevAuctions.map(auction =>
+            auction.auctionId === bidAuctionId
+              ? { ...auction, highestBidder: args.bidder!, highestBid: formatEther(args.amount!), highestBidInWei: args.amount! }
+              : auction
+          )
+        );
+          setRefreshMintersTrigger(prev => prev + 1); // Refresh minters list
+        });
+      }
+    });
+  
+   
 
     // Watch for PokemonCard Paused and Unpaused events
     useWatchContractEvent({
@@ -2892,10 +3026,10 @@ function App() {
         let processedListingDetails: Array<{ status: 'success' | 'failure', result?: readonly [ `0x${string}`, bigint, bigint, boolean ], error?: Error, originalListingId: bigint }> = [];
 
 
-        // The chain does not have the contract "multicall3" configured. Version: viem@2.29.0
+        // Note: If "multicall3" is not configured on a chain, viem might fall back or error.
 
         if (account.chainId === 31337 && publicClient) { // Hardhat chain ID
-          console.log("[Marketplace] Using sequential calls for Hardhat network to fetch listing details.");
+          // console.log("[Marketplace] Using sequential calls for Hardhat network to fetch listing details.");
           for (const id of uniqueListingIds) {
             try {
               const result = await publicClient.readContract({
@@ -2911,7 +3045,7 @@ function App() {
             }
           }
         } else if (publicClient) {
-          console.log("[Marketplace] Using multicall for non-Hardhat network to fetch listing details.");
+          // console.log("[Marketplace] Using multicall for non-Hardhat network to fetch listing details.");
           const listingDetailsContracts = uniqueListingIds.map(id => ({
             abi: tradingPlatformAbi,
             address: TRADING_PLATFORM_ADDRESS!,
@@ -2969,23 +3103,11 @@ function App() {
     fetchListings();
   }, [account.status, TRADING_PLATFORM_ADDRESS, POKEMON_CARD_ADDRESS, publicClient, refreshMarketplaceTrigger]);
 
-  // // Effect for auto-refreshing marketplace listings periodically (REPLACED BY EVENT WATCHERS)
-  // useEffect(() => {
-  //   const intervalId = setInterval(() => {
-  //     console.log('[Marketplace Auto-Refresh] Triggering marketplace refresh.');
-  //     setRefreshMarketplaceTrigger(prev => prev + 1);
-  //   }, 30000); // Refresh every 30 seconds
-
-  //   return () => {
-  //     clearInterval(intervalId); // Clear interval on component unmount
-  //   };
-  // }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
-
   // Effect to fetch active auctions
   useEffect(() => {
     const fetchAuctions = async () => {
       if (!publicClient || !TRADING_PLATFORM_ADDRESS || !POKEMON_CARD_ADDRESS) {
-        // Don't clear auctions here if it's just a configuration issue temporarily
+        console.log("[FetchAuctions] Skipping: Missing publicClient, TRADING_PLATFORM_ADDRESS, or POKEMON_CARD_ADDRESS.");
         return;
       }
       setIsLoadingAuctions(true);
@@ -2996,6 +3118,7 @@ function App() {
           event: parseAbiItem('event AuctionCreated(uint256 indexed auctionId, address indexed seller, uint256 indexed tokenId, uint256 startingPrice, uint256 endTime)'),
           fromBlock: 0n,
         });
+        // console.log(`[FetchAuctions] Found ${auctionCreatedLogs?.length || 0} AuctionCreated logs.`);
 
         if (!auctionCreatedLogs || auctionCreatedLogs.length === 0) {
           setActiveAuctions([]); // Clear if no auctions ever created or all are gone
@@ -3004,6 +3127,7 @@ function App() {
         }
 
         const uniqueAuctionIds = [...new Set(auctionCreatedLogs.map(log => log.args.auctionId!))];
+        // console.log(`[FetchAuctions] Unique auction IDs to fetch details for:`, uniqueAuctionIds.map(id => id.toString()));
 
         let processedAuctionDetails: Array<{ status: 'success' | 'failure', result?: ReturnType<typeof tradingPlatformAbi[0]['outputs']>, error?: Error, originalAuctionId: bigint }> = [];
 
@@ -3011,8 +3135,10 @@ function App() {
           for (const id of uniqueAuctionIds) {
             try {
               const result = await publicClient.readContract({ abi: tradingPlatformAbi, address: TRADING_PLATFORM_ADDRESS!, functionName: 'getAuction', args: [id] });
+              // console.log(`[FetchAuctions] Hardhat - getAuction for ID ${id.toString()}:`, result);
               processedAuctionDetails.push({ status: 'success', result: result as any, originalAuctionId: id });
             } catch (e: any) {
+              console.error(`[FetchAuctions] Hardhat - Failed to fetch auction ${id.toString()}:`, e);
               processedAuctionDetails.push({ status: 'failure', error: e, originalAuctionId: id });
             }
           }
@@ -3021,9 +3147,21 @@ function App() {
           const multicallResults = await publicClient.multicall({ contracts: auctionDetailsContracts, allowFailure: true });
           processedAuctionDetails = multicallResults.map((res, index) => ({ ...res, originalAuctionId: uniqueAuctionIds[index] } as any));
         }
+        // console.log(`[FetchAuctions] Processed auction details (raw from multicall/sequential):`, processedAuctionDetails);
 
         const activeAuctionsData = processedAuctionDetails
-          .filter(res => res.status === 'success' && res.result && (res.result as any)[6] === true && (res.result as any)[7] === false) // result[6] is 'active', result[7] is 'ended'
+          .filter(res => {
+            const isSuccess = res.status === 'success' && res.result;
+            if (isSuccess) {
+              const contractSaysActive = (res.result as any)[6] === true; // auction.active from contract
+              const contractSaysNotEnded = (res.result as any)[7] === false; // auction.ended from contract
+              const shouldKeep = contractSaysActive && contractSaysNotEnded;
+              // console.log(`[FetchAuctions] Filtering Auction ID ${res.originalAuctionId.toString()}: ContractActive=${contractSaysActive}, ContractEnded=${(res.result as any)[7]}, Kept=${shouldKeep}`);
+              return shouldKeep;
+            }
+            // console.log(`[FetchAuctions] Filtering Auction ID ${res.originalAuctionId.toString()}: Status was failure or no result.`);
+            return false;
+          })
           .map(res => {
             const auctionData = res.result as any; // seller, tokenId, startingPrice, endTime, highestBidder, highestBid, active, ended
             return {
@@ -3039,6 +3177,7 @@ function App() {
             };
           });
 
+        // console.log(`[FetchAuctions] Filtered active auctions (before fetching PokemonData):`, activeAuctionsData);
         const finalAuctionsPromises = activeAuctionsData.map(async (auction) => {
           const pokemonData = await fetchPokemonDisplayData(auction.tokenId, publicClient, POKEMON_CARD_ADDRESS!);
           return {
@@ -3050,9 +3189,11 @@ function App() {
         });
 
         const resolvedAuctions = (await Promise.all(finalAuctionsPromises)).filter(item => item.pokemonData);
+        // console.log(`[FetchAuctions] Final resolved auctions to be set in state:`, resolvedAuctions);
         setActiveAuctions(resolvedAuctions);
       } catch (error: any) {
         setAuctionsError(`Failed to load auctions: ${error.message}`);
+        console.error(`[FetchAuctions] Error:`, error);
         // Potentially keep stale data on error
       } finally {
         setIsLoadingAuctions(false);
@@ -3172,6 +3313,7 @@ function App() {
         setEndAuctionStatus(successMessage);
         setRefreshAuctionsTrigger(prev => prev + 1);
         refetchBalance(); // Ownership might change, or funds become withdrawable
+        if (refetchPendingWithdrawals) refetchPendingWithdrawals(); // Seller might now have funds
       } else if (actionType === 'setMinterTrue' || actionType === 'setMinterFalse') {
         const verb = actionType === 'setMinterTrue' ? 'added' : 'removed';
         successMessage = `✅ Minter ${verb} successfully! (${actionDetails})`;
@@ -3292,14 +3434,16 @@ function App() {
     }
   }, [
     isConfirmed, receipt, confirmationError, currentActionInfo,
+    // Variables read inside the effect
+    listTokenId,
+    // Stable functions from hooks (refetchers, reset)
     refetchBalance, refetchApprovalStatus, refetchNextTokenId, resetWriteContract, refetchPendingWithdrawals, refetchMinterStatusForUser, refetchTotalSupply, refetchPausedStatus,
-    listTokenId, setListTokenId,
+    // Stable state setters
     setRefreshMarketplaceTrigger, setRefreshAuctionsTrigger, setRefreshMintersTrigger,
+    setListTokenId,
     setMintStatus, setApproveStatus, setListStatus, setBuyStatus, setBurnStatus, setWithdrawStatus, setPauseContractStatus,
-    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, setSetMinterStatus, 
-    mintStatus, approveStatus, listStatus, buyStatus, burnStatus, withdrawStatus, pauseContractStatus,
-    cancelListingStatus, createAuctionStatus, bidStatus, cancelAuctionStatus, endAuctionStatus, setMinterStatus
-  ]);  
+    setCancelListingStatus, setCreateAuctionStatus, setBidStatus, setCancelAuctionStatus, setEndAuctionStatus, setSetMinterStatus
+  ]);
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}> {/* Centered content */}
         <AccountConnect />
@@ -3316,9 +3460,9 @@ function App() {
           <>
             <hr />
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <h2>Pokémon Card dApp ({currentNetworkConfig.name})</h2>
-              <p><small>Pokemon Contract: {POKEMON_CARD_ADDRESS}</small></p>
-              <p><small>Trading Platform: {TRADING_PLATFORM_ADDRESS}</small></p>
+              <h2>🃏 Pokémon Card dApp ({currentNetworkConfig.name})</h2>
+              <p><small>📜 Pokemon Contract: {POKEMON_CARD_ADDRESS}</small></p>
+              <p><small>🛒 Trading Platform: {TRADING_PLATFORM_ADDRESS}</small></p>
             </div>
 
             <nav className="navbar">
@@ -3326,26 +3470,26 @@ function App() {
                 onClick={() => setActiveSection('myCards')} 
                 className={activeSection === 'myCards' ? 'active' : ''}
               >
-                My Cards & Mint
+                🎴 My Cards & Mint
               </button>
               <button 
                 onClick={() => setActiveSection('marketplace')} 
                 className={activeSection === 'marketplace' ? 'active' : ''}
               >
-                Marketplace
+                🛍️ Marketplace
               </button>
               <button 
                 onClick={() => setActiveSection('auctions')} 
                 className={activeSection === 'auctions' ? 'active' : ''}
               >
-                Auctions
+                ⚖️ Auctions
               </button>
               {contractOwner && account.address?.toLowerCase() === contractOwner.toLowerCase() && (
                 <button 
                   onClick={() => setActiveSection('admin')} 
                   className={activeSection === 'admin' ? 'active' : ''}
                 >
-                  Admin Panel
+                  👑 Admin Panel
                 </button>
               )}
             </nav>
@@ -3353,7 +3497,7 @@ function App() {
             {/* Transaction Status Area - Visible across sections */}
             {currentActionInfo.type && (isWritePending || isConfirming || writeTxHash) && (
               <div className="transaction-status-area" style={{marginBottom: '20px'}}>
-                <h4>Transaction: {currentActionInfo.type} {currentActionInfo.tokenId || currentActionInfo.details || ''}</h4>
+                <h4>⏳ Transaction: {currentActionInfo.type} {currentActionInfo.tokenId || currentActionInfo.details || ''}</h4>
                 {isWritePending && <p>Please confirm in your wallet...</p>}
                 {writeTxHash && !isConfirming && <p>Transaction sent (Hash: {writeTxHash.substring(0,10)}...). Waiting for confirmation...</p>}
                 {isConfirming && <p>Confirming transaction (Hash: {writeTxHash?.substring(0,10)}...)...</p>}
@@ -3372,7 +3516,7 @@ function App() {
                     mintingError={writeError && currentActionInfo.type === 'mint' ? writeError : null}
                     expectedNextPokemonId={nextTokenIdData !== undefined ? BigInt(nextTokenIdData as number | bigint) : undefined}
                     maxPokemonIdReached={nextTokenIdData !== undefined ? (BigInt(nextTokenIdData as number | bigint) > BigInt(MAX_POKEMON_ID)) : false}
-                    isLoadingNextId={isLoadingNextTokenId}
+                    isLoadingNextId={isLoadingNextTokenId} // MintCardForm might need internal emoji for this
                   />
                   <hr/>
                 </>
@@ -3380,30 +3524,30 @@ function App() {
               
               {TRADING_PLATFORM_ADDRESS && (
                 <div style={{padding: '10px', border: '1px dashed #777', borderRadius: '8px', marginBottom: '20px'}}>
-                  <h4>Your Funds on Platform</h4>
-                  {isLoadingPendingWithdrawals && <p>Loading your withdrawable balance...</p>}
+                  <h4>💰 Your Funds on Platform</h4>
+                  {isLoadingPendingWithdrawals && <p>⏳ Loading your withdrawable balance...</p>}
                   {!isLoadingPendingWithdrawals && (
-                    <p>Withdrawable: {formatEther(pendingWithdrawalAmount)} ETH</p>
+                    <p>💸 Withdrawable: {formatEther(pendingWithdrawalAmount)} ETH</p>
                   )}
                   <button onClick={handleWithdrawFunds} disabled={pendingWithdrawalAmount === 0n || ((isWritePending || isConfirming) && currentActionInfo.type === 'withdraw')}>
-                    {((isWritePending || isConfirming) && currentActionInfo.type === 'withdraw') ? 'Withdrawing...' : 'Withdraw Funds'}
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'withdraw') ? '💸 Withdrawing...' : '💸 Withdraw Funds'}
                   </button>
                   {withdrawStatus && <p><small>{withdrawStatus}</small></p>}
                 </div>
               )}
               <hr/>
-              <h3>Your Pokémon Cards</h3>
+              <h3>🎴 Your Pokémon Cards</h3>
               {/* More nuanced loading states */}
-              {(isLoadingBalance && !pokemonBalance) && <p>Loading your card balance...</p>}
-              {!isLoadingBalance && pokemonBalance !== undefined && isLoadingTokenIds && <p>Fetching your token IDs...</p>}
-              {!isLoadingBalance && pokemonBalance !== undefined && !isLoadingTokenIds && userPokemonIds.length > 0 && isLoadingRawPokemonDetails && <p>Fetching details for your Pokémon...</p>}
+              {(isLoadingBalance && !pokemonBalance) && <p>⏳ Loading your card balance...</p>}
+              {!isLoadingBalance && pokemonBalance !== undefined && isLoadingTokenIds && <p>⏳ Fetching your token IDs...</p>}
+              {!isLoadingBalance && pokemonBalance !== undefined && !isLoadingTokenIds && userPokemonIds.length > 0 && isLoadingRawPokemonDetails && <p>⏳ Fetching details for your Pokémon...</p>}
               
 
 
               {fetchTokenIdsError && <p style={{ color: 'red' }}>{fetchTokenIdsError}</p>}
               {!isLoadingTokenIds && !isLoadingRawPokemonDetails && !fetchTokenIdsError && ownedPokemonDetails.length > 0 ? (
                 <>
-                  <p>Your Card Balance: {pokemonBalance?.toString()}</p>
+                  <p>📊 Your Card Balance: {pokemonBalance?.toString()}</p>
                   <div className="flex-wrap-container">
                     {ownedPokemonDetails.map(pokemon => ( // Ensure key is unique
                       <div key={pokemon.tokenId} className="card" style={{ width: '220px' }}>
@@ -3414,26 +3558,26 @@ function App() {
                         <p style={{fontSize: '0.8em', margin: '2px 0'}}>Types: {pokemon.type1}{pokemon.type2 ? ` / ${pokemon.type2}` : ''}</p>
                         {pokemon.isListed && pokemon.listingId && (
                           <>
-                            <p style={{color: 'orange', fontSize: '0.9em', fontWeight: 'bold'}}>Status: Listed (ID: {pokemon.listingId})</p>
+                            <p style={{color: 'orange', fontSize: '0.9em', fontWeight: 'bold'}}>🏷️ Status: Listed (ID: {pokemon.listingId})</p>
                             <button onClick={() => handleCancelListing(pokemon.listingId!)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(pokemon.listingId!))}>
-                              {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(pokemon.listingId!)) ? 'Cancelling...' : 'Cancel Listing'}
+                              {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(pokemon.listingId!)) ? '⏳ Cancelling...' : '❌ Cancel Listing'}
                             </button>
                           </>
                         )}
                         {pokemon.isInAuction && pokemon.auctionId && (
                           <>
-                            <p style={{color: 'cyan', fontSize: '0.9em', fontWeight: 'bold'}}>Status: In Auction (ID: {pokemon.auctionId})</p>
+                            <p style={{color: 'cyan', fontSize: '0.9em', fontWeight: 'bold'}}>⚖️ Status: In Auction (ID: {pokemon.auctionId})</p>
                             {!pokemon.auctionHasBids && (
                               <button onClick={() => handleCancelAuction(pokemon.auctionId!)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(pokemon.auctionId!))}>
-                                {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(pokemon.auctionId!)) ? 'Cancelling...' : 'Cancel Auction'}
+                                {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(pokemon.auctionId!)) ? '⏳ Cancelling...' : '❌ Cancel Auction'}
                               </button>
                             )}
                             {pokemon.auctionHasBids && <p style={{fontSize: '0.8em', color: '#aaa'}}>Cannot cancel, auction has bids.</p>}
                           </>
                         )}
                         {!pokemon.isListed && !pokemon.isInAuction && (
-                          <button onClick={() => handleBurn(pokemon.tokenId)} disabled={(isWritePending || isConfirming) && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId} style={{ marginTop: '5px', width: '100%' }}>
-                            { (isWritePending && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? 'Sending...' : (isConfirming && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? 'Confirming Burn...' : `Burn Token ${pokemon.tokenId}` }
+                          <button onClick={() => handleBurn(pokemon.tokenId)} disabled={(isWritePending || isConfirming) && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId} style={{ marginTop: '5px', width: '100%', backgroundColor: '#ff6b6b' }}>
+                            { (isWritePending && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? '🔥 Sending...' : (isConfirming && currentActionInfo.type === 'burn' && currentActionInfo.tokenId === pokemon.tokenId) ? '🔥 Confirming Burn...' : `🔥 Burn Token ${pokemon.tokenId}` }
                           </button>
                         )}
                       </div>
@@ -3443,11 +3587,11 @@ function App() {
 
                   {/* Combined Listing and Auction Creation Form */}
                   <div style={{marginTop: '25px', padding: '15px', border: '1px dashed #555', borderRadius: '8px'}}>
-                    <h4>Manage Your Card (ID: {listTokenId || 'Select a card'})</h4>
+                    <h4>⚙️ Manage Your Card (ID: {listTokenId || 'Select a card'})</h4>
                     <p><small>Select a card from your collection above to manage. The approval step is for the Trading Platform contract to manage your selected token.</small></p>
                     
                     <div style={{marginBottom: '10px'}}>
-                      <label htmlFor="token-select" style={{marginRight: '5px'}}>Token ID: </label>
+                      <label htmlFor="token-select" style={{marginRight: '5px'}}>🆔 Token ID: </label>
                       <select id="token-select" value={listTokenId} onChange={(e) => setListTokenId(e.target.value)}>
                         {ownedPokemonDetails.map(p => <option key={p.tokenId} value={p.tokenId}>{p.name} (ID: {p.tokenId})</option>)}
                       </select>
@@ -3457,29 +3601,29 @@ function App() {
                       onClick={handleApprove}
                       disabled={!listTokenId || isTokenApproved || isLoadingApprovalStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'approve')}
                     >
-                      {isLoadingApprovalStatus ? 'Checking Approval...' :
+                      {isLoadingApprovalStatus ? '⏳ Checking Approval...' :
                        isTokenApproved ? '✅ Approved for Marketplace' :
-                       ((isWritePending || isConfirming) && currentActionInfo.type === 'approve') ? (isConfirming ? 'Approving (Confirming...)' : 'Sending to Wallet...') :
-                       (approveStatus && !approveStatus.includes('approved') && !approveStatus.includes('failed')) ? approveStatus : '1. Approve Marketplace'}
+                       ((isWritePending || isConfirming) && currentActionInfo.type === 'approve') ? (isConfirming ? '⏳ Approving (Confirming...)' : '⏳ Sending to Wallet...') :
+                       (approveStatus && !approveStatus.includes('approved') && !approveStatus.includes('failed')) ? approveStatus : '1. 🤝 Approve Marketplace'}
                     </button>
                     <hr style={{margin: '15px 0', borderTop: '1px dotted #555'}}/>
                     
-                    <h5>Fixed Price Sale</h5>
-                    <label htmlFor="price-input" style={{marginRight: '5px'}}>Price (ETH): </label>
+                    <h5>💲 Fixed Price Sale</h5>
+                    <label htmlFor="price-input" style={{marginRight: '5px'}}>💰 Price (ETH): </label>
                     <input id="price-input" type="text" value={listPrice} onChange={(e) => setListPrice(e.target.value)} placeholder="e.g., 0.1" style={{width: '100px'}}/>
                     <button
                       onClick={handleListCard}
                       disabled={!listTokenId || !listPrice || !isTokenApproved || ((isWritePending || isConfirming) && currentActionInfo.type === 'list')}
                     >
-                      {((isWritePending || isConfirming) && currentActionInfo.type === 'list') ? (isConfirming ? 'Listing (Confirming...)' : 'Sending to Wallet...') :
-                       (listStatus && !listStatus.includes('listed') && !listStatus.includes('failed')) ? listStatus : '2. List Card'}
+                      {((isWritePending || isConfirming) && currentActionInfo.type === 'list') ? (isConfirming ? '🏷️ Listing (Confirming...)' : '🏷️ Sending to Wallet...') :
+                       (listStatus && !listStatus.includes('listed') && !listStatus.includes('failed')) ? listStatus : '2. 🏷️ List Card'}
                     </button>
                     
-                    <h5 style={{marginTop: '20px'}}>Auction</h5>
-                    <label htmlFor="auction-start-price" style={{marginRight: '5px'}}>Start Price (ETH): </label>
+                    <h5 style={{marginTop: '20px'}}>⚖️ Auction</h5>
+                    <label htmlFor="auction-start-price" style={{marginRight: '5px'}}>💰 Start Price (ETH): </label>
                     <input id="auction-start-price" type="text" value={createAuctionStartingPrice} onChange={(e) => setCreateAuctionStartingPrice(e.target.value)} placeholder="e.g., 0.05" style={{width: '100px'}}/>
                     <br/>
-                    <label htmlFor="auction-duration" style={{marginRight: '5px'}}>Duration (minutes): </label>
+                    <label htmlFor="auction-duration" style={{marginRight: '5px'}}>⏱️ Duration (minutes): </label>
                     <input id="auction-duration" type="number" value={createAuctionDurationMinutes} onChange={(e) => setCreateAuctionDurationMinutes(e.target.value)} placeholder="e.g., 60" style={{width: '100px'}}/>
                     <button
                       onClick={() => {
@@ -3492,7 +3636,7 @@ function App() {
                       }}
                       disabled={!listTokenId || !createAuctionStartingPrice || !createAuctionDurationMinutes || !isTokenApproved || ((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction')}
                     >
-                      {((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction') ? (isConfirming ? 'Creating Auction (Confirming...)' : 'Sending...') : '3. Create Auction'}
+                      {((isWritePending || isConfirming) && currentActionInfo.type === 'createAuction') ? (isConfirming ? '⚖️ Creating Auction (Confirming...)' : '⚖️ Sending...') : '3. ⚖️ Create Auction'}
                     </button>
                   </div>
                   {/* Display specific errors if they occurred during these actions */}
@@ -3503,28 +3647,28 @@ function App() {
                   {createAuctionStatus && <p><small>{createAuctionStatus}</small></p>}
                 </>
               ) : ( // Conditions for "no cards" message
-                !isLoadingBalance && pokemonBalance !== undefined && Number(pokemonBalance) === 0 && !isLoadingTokenIds && !isLoadingRawPokemonDetails && !fetchTokenIdsError && <p>You don't own any Pokémon NFTs yet. Try minting one!</p>
+                !isLoadingBalance && pokemonBalance !== undefined && Number(pokemonBalance) === 0 && !isLoadingTokenIds && !isLoadingRawPokemonDetails && !fetchTokenIdsError && <p>🤷 You don't own any Pokémon NFTs yet. Try minting one!</p>
               )}
             </div>
             )}
 
             {activeSection === 'marketplace' && (
             <div className="section-container">
-              <h2>Marketplace Listings</h2>
+              <h2>🛍️ Marketplace Listings</h2>
               <button onClick={() => setRefreshMarketplaceTrigger(prev => prev + 1)} disabled={isLoadingMarketplace}>
-                {isLoadingMarketplace ? 'Refreshing Marketplace...' : 'Refresh Marketplace'}
+                {isLoadingMarketplace ? '🔄 Refreshing Marketplace...' : '🔄 Refresh Marketplace'}
               </button>
 
               {/* Display loading or error messages */}
               {/* The "Refreshing..." message will show above the list if it's a refresh */}
-              {isLoadingMarketplace && marketplaceListings.length > 0 && <p><small>Refreshing marketplace data...</small></p>}
+              {isLoadingMarketplace && marketplaceListings.length > 0 && <p><small>⏳ Refreshing marketplace data...</small></p>}
               {/* The "Loading..." message will show if it's an initial load (no items yet) */}
-              {isLoadingMarketplace && marketplaceListings.length === 0 && <p>Loading marketplace...</p>}
+              {isLoadingMarketplace && marketplaceListings.length === 0 && <p>⏳ Loading marketplace...</p>}
               {marketplaceError && !isLoadingMarketplace && <p style={{ color: 'red' }}>{marketplaceError}</p>}
 
               {/* Display "No items" message only if not loading, no error, and list is truly empty */}
               {!isLoadingMarketplace && !marketplaceError && marketplaceListings.length === 0 &&  (
-                <p>No items currently listed in the marketplace.</p>
+                <p>🤷 No items currently listed in the marketplace.</p>
               )}
 
               {/* Display the list if it has items. Apply opacity effect during refresh. */}
@@ -3535,21 +3679,21 @@ function App() {
                     <div key={item.listingId} className="card" style={{ width: '250px' }}>
                       {item.pokemonData?.imageUrl && <img src={item.pokemonData.imageUrl} alt={item.pokemonData.name || `Token ${item.tokenId}`} style={{ maxWidth: '100%', height: 'auto', marginBottom: '10px' }} />}
                       <h4>{item.pokemonData?.name || `Token ID: ${item.tokenId}`}</h4>
-                      <p>Listing ID: {item.listingId}</p>
+                      <p>🆔 Listing ID: {item.listingId}</p>
                       {item.pokemonData && (
                         <p style={{fontSize: '0.8em'}}>HP: {item.pokemonData.hp}, Atk: {item.pokemonData.attack}, Def: {item.pokemonData.defense}<br/>
                         Types: {item.pokemonData.type1}{item.pokemonData.type2 ? ` / ${item.pokemonData.type2}` : ''}</p>
                       )}
-                      <p>Price: {item.price} ETH</p>
-                      <p><small>Seller: {item.seller === account.address ? 'You' : item.seller}</small></p>
+                      <p>💰 Price: {item.price} ETH</p>
+                      <p><small>👤 Seller: {item.seller === account.address ? 'You' : item.seller}</small></p>
                       {item.seller !== account.address && (
                         <button onClick={() => handleBuyItem(item.listingId, item.priceInWei)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId)}>
-                          {((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId) ? (isConfirming ? 'Confirming Buy...' : 'Sending...') : 'Buy Now'}
+                          {((isWritePending || isConfirming) && currentActionInfo.type === 'buy' && currentActionInfo.tokenId === item.listingId) ? (isConfirming ? '🛒 Confirming Buy...' : '🛒 Sending...') : '🛒 Buy Now'}
                         </button>
                       )}
                       {item.seller === account.address && (
                         <button onClick={() => handleCancelListing(item.listingId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(item.listingId))}>
-                          {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(item.listingId)) ? (isConfirming ? 'Confirming Cancel...' : 'Sending...') : 'Cancel Listing'}
+                          {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelListing' && currentActionInfo.details?.includes(item.listingId)) ? (isConfirming ? '⏳ Confirming Cancel...' : '⏳ Sending...') : '❌ Cancel Listing'}
                         </button>
                       )}
                       {/* Display final buy status for this specific item */}
@@ -3564,26 +3708,26 @@ function App() {
 
             {activeSection === 'auctions' && (
             <div className="section-container">
-              <h2>Active Auctions</h2>
+              <h2>⚖️ Active Auctions</h2>
               <button onClick={() => setRefreshAuctionsTrigger(prev => prev + 1)} disabled={isLoadingAuctions}>
-                {isLoadingAuctions ? 'Refreshing Auctions...' : 'Refresh Auctions'}
+                {isLoadingAuctions ? '🔄 Refreshing Auctions...' : '🔄 Refresh Auctions'}
               </button>
-              {isLoadingAuctions && activeAuctions.length > 0 && <p><small>Refreshing auction data...</small></p>}
-              {isLoadingAuctions && activeAuctions.length === 0 && <p>Loading auctions...</p>}
+              {isLoadingAuctions && activeAuctions.length > 0 && <p><small>⏳ Refreshing auction data...</small></p>}
+              {isLoadingAuctions && activeAuctions.length === 0 && <p>⏳ Loading auctions...</p>}
               {auctionsError && !isLoadingAuctions && <p style={{ color: 'red' }}>{auctionsError}</p>}
-              {!isLoadingAuctions && !auctionsError && activeAuctions.length === 0 && <p>No active auctions at the moment.</p>}
+              {!isLoadingAuctions && !auctionsError && activeAuctions.length === 0 && <p>🤷 No active auctions at the moment.</p>}
 
               {activeAuctions.length > 0 && (
                 <div className="flex-wrap-container" style={{ opacity: isLoadingAuctions ? 0.6 : 1, transition: 'opacity 0.3s ease-in-out' }}>
                   {activeAuctions.map((auction) => (
                     <div key={auction.auctionId} className="card" style={{ width: '280px' }}>
                       {auction.pokemonData?.imageUrl && <img src={auction.pokemonData.imageUrl} alt={auction.pokemonData.name || `Token ${auction.tokenId}`} style={{ maxWidth: '100%', height: 'auto', marginBottom: '10px' }} />}
-                      <h4>{auction.pokemonData?.name || `Token ID: ${auction.tokenId}`} (Auction ID: {auction.auctionId})</h4>
+                      <h4>{auction.pokemonData?.name || `Token ID: ${auction.tokenId}`} (🆔 Auction ID: {auction.auctionId})</h4>
                       {auction.pokemonData && <p style={{fontSize: '0.8em'}}>HP: {auction.pokemonData.hp}, Atk: {auction.pokemonData.attack}, Def: {auction.pokemonData.defense}</p>}
-                      <p>Seller: {auction.seller === account.address ? 'You' : auction.seller.substring(0,6)}</p>
-                      <p>Ends: {new Date(auction.endTime * 1000).toLocaleString()}</p>
-                      <p>Starting Price: {auction.startingPrice} ETH</p>
-                      <p>Highest Bid: {auction.highestBid} ETH by {auction.highestBidder === '0x0000000000000000000000000000000000000000' ? 'N/A' : auction.highestBidder.substring(0,6)}</p>
+                      <p>👤 Seller: {auction.seller === account.address ? 'You' : auction.seller.substring(0,6)}</p>
+                      <p>⏳ Ends: {new Date(auction.endTime * 1000).toLocaleString()}</p>
+                      <p>💰 Starting Price: {auction.startingPrice} ETH</p>
+                      <p>🏆 Highest Bid: {auction.highestBid} ETH by {auction.highestBidder === '0x0000000000000000000000000000000000000000' ? 'N/A' : auction.highestBidder.substring(0,6)}</p>
 
                       {auction.active && !auction.ended && new Date().getTime() / 1000 < auction.endTime && ( // Auction is ongoing
                         <>
@@ -3597,27 +3741,27 @@ function App() {
                                 style={{width: '100px', marginRight: '5px'}}
                               />
                               <button onClick={() => handleBid(auction.auctionId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'bid' && currentActionInfo.details?.includes(auction.auctionId))}>
-                                {((isWritePending || isConfirming) && currentActionInfo.type === 'bid' && currentActionInfo.details?.includes(auction.auctionId)) ? 'Bidding...' : 'Place Bid'}
+                                {((isWritePending || isConfirming) && currentActionInfo.type === 'bid' && currentActionInfo.details?.includes(auction.auctionId)) ? '💸 Bidding...' : '💸 Place Bid'}
                               </button>
                             </div>
                           )}
                           {auction.seller === account.address && auction.highestBidder === '0x0000000000000000000000000000000000000000' && ( // Seller can cancel if no bids
                             <button onClick={() => handleCancelAuction(auction.auctionId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(auction.auctionId))}>
-                              {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(auction.auctionId)) ? 'Cancelling...' : 'Cancel Auction'}
+                              {((isWritePending || isConfirming) && currentActionInfo.type === 'cancelAuction' && currentActionInfo.details?.includes(auction.auctionId)) ? '⏳ Cancelling...' : '❌ Cancel Auction'}
                             </button>
                           )}
                         </>
                       )}
 
-                      {auction.active && !auction.ended && new Date().getTime() / 1000 >= auction.endTime && ( // Auction time has passed, can be ended
+                      {auction.active && !auction.ended && currentTime >= auction.endTime && ( // Auction time has passed, can be ended
                         <button onClick={() => handleEndAuction(auction.auctionId)} disabled={((isWritePending || isConfirming) && currentActionInfo.type === 'endAuction' && currentActionInfo.details?.includes(auction.auctionId))}>
-                          {((isWritePending || isConfirming) && currentActionInfo.type === 'endAuction' && currentActionInfo.details?.includes(auction.auctionId)) ? 'Ending...' : 'End Auction'}
+                          {((isWritePending || isConfirming) && currentActionInfo.type === 'endAuction' && currentActionInfo.details?.includes(auction.auctionId)) ? '🏁 Ending...' : '🏁 End Auction'}
                         </button>
                       )}
 
                       {!auction.active && auction.ended && (
                         <p style={{fontWeight: 'bold'}}>
-                          {auction.highestBidder !== '0x0000000000000000000000000000000000000000'
+                          🏁 {auction.highestBidder !== '0x0000000000000000000000000000000000000000'
                             ? `Ended. Winner: ${auction.highestBidder.substring(0,6)}`
                             : 'Ended (No Bids/Cancelled)'}
                         </p>
@@ -3638,18 +3782,18 @@ function App() {
             {activeSection === 'admin' && contractOwner && account.address?.toLowerCase() === contractOwner.toLowerCase() && (
               <div className="admin-panel">
                 <h2>👑 Admin Panel (PokemonCard Contract)</h2>
-                <p style={{color: '#7E47FF'}}>Contract Owner: <strong style={{color: '#0165FF'}}>{contractOwner}</strong></p>
+                <p style={{color: '#7E47FF'}}>🔑 Contract Owner: <strong style={{color: '#0165FF'}}>{contractOwner}</strong></p>
                 <p><small style={{color: '#3E95F6'}}>This panel is exclusively for you, the contract owner.</small></p>
 
                 <div style={{ marginTop: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border-color-dark)' }}>
-                  <h4>Contract Stats</h4>
-                  {isLoadingTotalSupply && <p>Loading total NFT supply...</p>}
-                  {totalNftSupply !== null && !isLoadingTotalSupply && <p>Total NFTs in Circulation: <strong>{totalNftSupply.toString()}</strong></p>}
-                  <button onClick={() => refetchTotalSupply()} disabled={isLoadingTotalSupply}>Refresh Stats</button>
+                  <h4>📊 Contract Stats</h4>
+                  {isLoadingTotalSupply && <p>⏳ Loading total NFT supply...</p>}
+                  {totalNftSupply !== null && !isLoadingTotalSupply && <p>🔢 Total NFTs in Circulation: <strong>{totalNftSupply.toString()}</strong></p>}
+                  <button onClick={() => refetchTotalSupply()} disabled={isLoadingTotalSupply}>🔄 Refresh Stats</button>
                 </div>
 
                 <div style={{ marginTop: '15px' }}>
-                  <h4>Manage Minter Addresses</h4>
+                  <h4>🔧 Manage Minter Addresses</h4>
                   <input
                     type="text"
                     placeholder="Enter Address (0x...)"
@@ -3658,44 +3802,44 @@ function App() {
                     style={{ marginRight: '10px', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', minWidth: '300px' }}
                   />
                   <button onClick={() => handleSetMinter(minterAddressInput, true)} disabled={!minterAddressInput || ((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue')} style={{ backgroundColor: '#28a745' }}> {/* Green for add */}
-                    {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue') ? 'Adding...' : 'Add as Minter'}
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterTrue') ? '✅ Adding...' : '✅ Add as Minter'}
                   </button>
                   <button onClick={() => handleSetMinter(minterAddressInput, false)} disabled={!minterAddressInput || ((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse')} style={{ backgroundColor: '#dc3545' }}> {/* Red for remove */}
-                    {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse') ? 'Removing...' : 'Remove Minter'}
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'setMinterFalse') ? '❌ Removing...' : '❌ Remove Minter'}
                   </button>
                   {setMinterStatus && <p><small style={{color: setMinterStatus.includes('✅') ? 'green' : (setMinterStatus.includes('⚠️') ? 'red' : '#333')}}>{setMinterStatus}</small></p>}
                 </div>
 
                 <div style={{ marginTop: '20px' }}>
-                  <h4>Current Authorized Minters:</h4>
-                  {isLoadingMinters && <p>Loading minters list...</p>}
+                  <h4>📜 Current Authorized Minters:</h4>
+                  {isLoadingMinters && <p>⏳ Loading minters list...</p>}
                   {mintersError && <p style={{ color: 'red' }}>{mintersError}</p>}
                   {!isLoadingMinters && !mintersError && currentMinters.length === 0 && <p style={{fontStyle: 'italic'}}>No addresses are currently authorized as minters.</p>}
                   {!isLoadingMinters && !mintersError && currentMinters.length > 0 && (
                     <ul style={{ listStyleType: 'disc', paddingLeft: '20px' }}>{currentMinters.map(minter => <li key={minter}><small style={{fontFamily: 'monospace'}}>{minter}</small></li>)}</ul>
                   )}
-                  <button onClick={() => setRefreshMintersTrigger(p => p + 1)} disabled={isLoadingMinters} style={{ marginTop: '10px' }}>Refresh Minters List</button>
+                  <button onClick={() => setRefreshMintersTrigger(p => p + 1)} disabled={isLoadingMinters} style={{ marginTop: '10px' }}>🔄 Refresh Minters List</button>
                 </div>
 
                 <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid var(--border-color-dark)' }}>
-                  <h4>Contract Paused State (PokemonCard)</h4>
-                  {isLoadingPausedStatus && <p>Loading paused status...</p>}
+                  <h4>🚦 Contract Paused State (PokemonCard)</h4>
+                  {isLoadingPausedStatus && <p>⏳ Loading paused status...</p>}
                   {!isLoadingPausedStatus && (
-                    <p>Currently: <strong>{isContractPaused ? 'PAUSED' : 'ACTIVE (Not Paused)'}</strong></p>
+                    <p>🚦 Currently: <strong>{isContractPaused ? 'PAUSED 🛑' : 'ACTIVE 🟢'}</strong></p>
                   )}
                   <button
                     onClick={handlePauseContract}
                     disabled={isContractPaused || isLoadingPausedStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'pauseContract')}
                     style={{ backgroundColor: '#ffc107', marginRight: '10px', color: 'black' }} // Yellow for pause
                   >
-                    {((isWritePending || isConfirming) && currentActionInfo.type === 'pauseContract') ? 'Pausing...' : 'Pause Contract'}
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'pauseContract') ? '⏸️ Pausing...' : '⏸️ Pause Contract'}
                   </button>
                   <button
                     onClick={handleUnpauseContract}
                     disabled={!isContractPaused || isLoadingPausedStatus || ((isWritePending || isConfirming) && currentActionInfo.type === 'unpauseContract')}
                     style={{ backgroundColor: '#17a2b8' }} // Teal for unpause
                   >
-                    {((isWritePending || isConfirming) && currentActionInfo.type === 'unpauseContract') ? 'Unpausing...' : 'Unpause Contract'}
+                    {((isWritePending || isConfirming) && currentActionInfo.type === 'unpauseContract') ? '▶️ Unpausing...' : '▶️ Unpause Contract'}
                   </button>
                   {pauseContractStatus && <p><small style={{color: pauseContractStatus.includes('✅') ? 'green' : (pauseContractStatus.includes('⚠️') ? 'red' : '#333')}}>{pauseContractStatus}</small></p>}
                 </div>

@@ -1,20 +1,21 @@
 // c:\Users\Carti\Desktop\ETH\Bsc\6 Semester\DeFi\defi_trading_platform\scripts\perfectBatchMintFromIPFS.js
 const hre = require("hardhat");
+// Note: Node.js v18+ has global fetch. If your environment supports it, you might not need 'node-fetch'.
 const fetch = require("node-fetch"); // Or use global fetch if available and preferred
-const path = require("path"); // Used for constructing IPFS paths if needed, though string concat is fine here.
+const fs = require('fs');
+const path = require("path");
 
 // --- Script Configuration ---
 
 // REQUIRED: Address of your deployed PokemonCard contract.
-// Example: "0x1234567890123456789012345678901234567890"
-const POKEMON_CARD_CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+let POKEMON_CARD_CONTRACT_ADDRESS; // This will be loaded from deployedAddresses.json
 
 // REQUIRED: The IPFS CID of the DIRECTORY containing all your JSON metadata files (1.json, 2.json, ...).
 const IPFS_BASE_DIRECTORY_CID = "bafybeib3a5is3s42srpxived3bdh7y3vwu6lozo6w7htjedcflnem4c2bu";
 
 // The highest file number for your metadata (e.g., if you have 1.json to 100.json, this should be 100).
 // The script will determine the starting file number based on the contract's totalSupply.
-const END_FILE_NUMBER = 50; // Adjust if you have fewer or more than 100 files.
+const END_FILE_NUMBER = 100; // Adjust if you have fewer or more than 100 files.
 
 // Address to mint the NFTs to. Defaults to the first signer (deployer).
 // Set this if you want to mint to a different address.
@@ -23,6 +24,21 @@ let RECIPIENT_ADDRESS; // Example: "0x0987654321098765432109876543210987654321"
 // IPFS Gateway to fetch the JSON metadata.
 const IPFS_GATEWAY = "https://ipfs.io/ipfs/"; // Common public gateway. Consider using a dedicated one for reliability.
 // Other options: "https://gateway.pinata.cloud/ipfs/", "https://cloudflare-ipfs.com/ipfs/"
+
+// --- Logging Prefixes ---
+const LOG_PREFIXES = {
+    INFO: "ℹ️ [INFO]",
+    SUCCESS: "✅ [SUCCESS]",
+    ERROR: "❌ [ERROR]",
+    WARN: "⚠️ [WARN]",
+    ACTION: "➡️ [ACTION]",
+    FETCH: "📡 [FETCH]",
+    MINT: "✨ [MINT]",
+    TX: "⏳ [TX]",
+    EVENT: "🔔 [EVENT]",
+    SETUP: "🛠️ [SETUP]",
+    CRITICAL: "🚨 [CRITICAL]"
+};
 
 // --- End Script Configuration ---
 
@@ -36,7 +52,6 @@ const IPFS_GATEWAY = "https://ipfs.io/ipfs/"; // Common public gateway. Consider
  */
 function getAttributeValue(attributes, traitType, defaultValue = 0, isStringValue = false) {
     if (!attributes || !Array.isArray(attributes)) {
-        // console.warn(`      ⚠️ Attributes array is missing or not an array. Returning default for ${traitType}.`); // Less verbose
         return defaultValue;
     }
     const trait = attributes.find(attr => attr.trait_type && attr.trait_type.toLowerCase() === traitType.toLowerCase());
@@ -49,49 +64,72 @@ function getAttributeValue(attributes, traitType, defaultValue = 0, isStringValu
         if (!isNaN(numericValue)) {
             return numericValue;
         } else {
-            console.warn(`      ⚠️ Value for trait '${traitType}' is not a number: '${trait.value}'. Returning default.`);
+            console.warn(`${LOG_PREFIXES.WARN} Value for trait '${traitType}' is not a number: '${trait.value}'. Returning default.`);
             return defaultValue;
         }
     }
-    // console.warn(`      ⚠️ Trait '${traitType}' not found in attributes. Returning default.`); // Less verbose
     return defaultValue;
 }
 
 
 async function main() {
-    console.log("🌟 Starting Perfect Batch Pokémon Minting Script (from IPFS Directory) 🌟");
+    console.log(`\n🌟 ${LOG_PREFIXES.INFO} Starting Perfect Batch Pokémon Minting Script (from IPFS Directory) 🌟`);
 
-    const [deployer] = await hre.ethers.getSigners();
+    const [deployer] = await hre.ethers.getSigners(); // Get the first signer (deployer) from Hardhat
     RECIPIENT_ADDRESS = RECIPIENT_ADDRESS || deployer.address;
 
-    if (POKEMON_CARD_CONTRACT_ADDRESS === "YOUR_DEPLOYED_POKEMONCARD_CONTRACT_ADDRESS" || !POKEMON_CARD_CONTRACT_ADDRESS) {
-        console.error("❌ CRITICAL ERROR: POKEMON_CARD_CONTRACT_ADDRESS is not set. Please update it in the script.");
+    // --- Load Contract Address from deployedAddresses.json ---
+    const deployedAddressesPath = path.join(__dirname, "..", "wagmi-project", "src", "contracts", "deployedAddresses.json");
+    try {
+        if (fs.existsSync(deployedAddressesPath)) {
+            const addressesJson = fs.readFileSync(deployedAddressesPath, 'utf8');
+            const deployedAddresses = JSON.parse(addressesJson);
+            const chainId = hre.network.config.chainId.toString();
+
+            if (deployedAddresses[chainId] && deployedAddresses[chainId].pokemonCardAddress) {
+                POKEMON_CARD_CONTRACT_ADDRESS = deployedAddresses[chainId].pokemonCardAddress;
+                console.log(`${LOG_PREFIXES.SUCCESS} Loaded PokemonCard address for network ${chainId} (${deployedAddresses[chainId].name || 'Unknown Network'}): ${POKEMON_CARD_CONTRACT_ADDRESS}`);
+            } else {
+                console.error(`${LOG_PREFIXES.ERROR} PokemonCard address not found for network ID ${chainId} in ${deployedAddressesPath}.`);
+                console.error(`${LOG_PREFIXES.INFO} Please ensure 'deploy.js' has been run for this network and the address is present.`);
+                process.exit(1);
+            }
+        } else {
+            console.error(`${LOG_PREFIXES.ERROR} ${deployedAddressesPath} not found.`);
+            console.error(`${LOG_PREFIXES.INFO} Please run the 'deploy.js' script first to generate this file.`);
+            process.exit(1);
+        }
+    } catch (error) {
+        console.error(`${LOG_PREFIXES.ERROR} Failed to load or parse ${deployedAddressesPath}:`, error);
         process.exit(1);
     }
+    // --- End Load Contract Address ---
+
     if (!IPFS_BASE_DIRECTORY_CID) {
-        console.error("❌ CRITICAL ERROR: IPFS_BASE_DIRECTORY_CID is not set. Please update it in the script.");
+        console.error(`${LOG_PREFIXES.CRITICAL} IPFS_BASE_DIRECTORY_CID is not set. Please update it in the script.`);
         process.exit(1);
     }
 
-    console.log(`   Contract Address: ${POKEMON_CARD_CONTRACT_ADDRESS}`);
-    console.log(`   Recipient Address: ${RECIPIENT_ADDRESS}`);
-    console.log(`   IPFS Directory CID: ${IPFS_BASE_DIRECTORY_CID}`);
-    console.log(`   IPFS Gateway: ${IPFS_GATEWAY}`);
+
+    console.log(`${LOG_PREFIXES.SETUP} Contract Address: ${POKEMON_CARD_CONTRACT_ADDRESS}`);
+    console.log(`${LOG_PREFIXES.SETUP} Recipient Address: ${RECIPIENT_ADDRESS}`);
+    console.log(`${LOG_PREFIXES.SETUP} IPFS Directory CID: ${IPFS_BASE_DIRECTORY_CID}`);
+    console.log(`${LOG_PREFIXES.SETUP} IPFS Gateway: ${IPFS_GATEWAY}`);
 
     const PokemonCardFactory = await hre.ethers.getContractFactory("PokemonCard");
     const pokemonCard = PokemonCardFactory.attach(POKEMON_CARD_CONTRACT_ADDRESS);
 
     // Determine the starting file number by asking the contract for the next token ID
     const nextTokenIdFromContract = await pokemonCard.getNextTokenId(); // Call the new getter
-    const firstFileNumberToProcess = Number(nextTokenIdFromContract); // Convert bigint to Number
+    const firstFileNumberToProcess = Number(nextTokenIdFromContract); // Convert BigInt from contract to Number for loop
 
-    console.log(`   Next Token ID from contract (via getNextTokenId): ${nextTokenIdFromContract.toString()}`);
-    console.log(`   Will attempt to mint metadata file: ${firstFileNumberToProcess}.json (expecting tokenId ${firstFileNumberToProcess}) and continue up to ${END_FILE_NUMBER}.json`);
+    console.log(`${LOG_PREFIXES.INFO} Next Token ID from contract (via getNextTokenId): ${nextTokenIdFromContract.toString()}`);
+    console.log(`${LOG_PREFIXES.INFO} Will attempt to mint metadata file: ${firstFileNumberToProcess}.json (expecting tokenId ${firstFileNumberToProcess}) and continue up to ${END_FILE_NUMBER}.json`);
     console.log("----------------------------------------------------\n");
 
     if (firstFileNumberToProcess > END_FILE_NUMBER) {
-        console.log("✅ All available Pokémon metadata (up to END_FILE_NUMBER) seems to be minted according to current totalSupply.");
-        console.log("   If you added more metadata files, ensure END_FILE_NUMBER is updated.");
+        console.log(`${LOG_PREFIXES.SUCCESS} All available Pokémon metadata (up to END_FILE_NUMBER) seems to be minted according to getNextTokenId.`);
+        console.log(`${LOG_PREFIXES.INFO} If you added more metadata files, ensure END_FILE_NUMBER is updated.`);
         process.exit(0);
     }
 
@@ -102,8 +140,8 @@ async function main() {
         // This is the URI that will be stored on-chain by _setTokenURI
         const tokenUriForContract = `ipfs://${IPFS_BASE_DIRECTORY_CID}/${jsonFileName}`;
 
-        console.log(`➡️ Processing File: ${jsonFileName}`);
-        console.log(`   Fetching metadata from: ${metadataUrl}`);
+        console.log(`${LOG_PREFIXES.ACTION} Processing File: ${jsonFileName}`);
+        console.log(`   ${LOG_PREFIXES.FETCH} Fetching metadata from: ${metadataUrl}`);
 
         let name, hp, attack, defense, speed, type1, type2, special;
 
@@ -131,17 +169,17 @@ async function main() {
                 throw new Error(`'name' attribute not found or is empty in metadata for ${jsonFileName}.`);
             }
 
-            console.log(`   📊 Fetched Stats: Name: ${name}, HP: ${hp}, Atk: ${attack}, Def: ${defense}, Spd: ${speed}, Type1: '${type1}', Type2: '${type2}', Special: ${special}`);
+            console.log(`   ${LOG_PREFIXES.SUCCESS} Fetched Stats: Name: ${name}, HP: ${hp}, Atk: ${attack}, Def: ${defense}, Spd: ${speed}, Type1: '${type1}', Type2: '${type2}', Special: ${special}`);
 
         } catch (error) {
-            console.error(`   ❌ Error fetching or parsing metadata for ${jsonFileName}: ${error.message}`);
-            console.warn(`   ⚠️ Skipping minting for ${jsonFileName} due to this error.`);
+            console.error(`   ${LOG_PREFIXES.ERROR} Error fetching or parsing metadata for ${jsonFileName}: ${error.message}`);
+            console.warn(`   ${LOG_PREFIXES.WARN} Skipping minting for ${jsonFileName} due to this error.`);
             console.log("----------------------------------------------------");
             continue; // Skip to the next Pokémon in the loop
         }
 
-        console.log(`   ✨ Attempting to mint '${name}' (from ${jsonFileName})...`);
-        console.log(`      Token URI to be stored: ${tokenUriForContract}`);
+        console.log(`   ${LOG_PREFIXES.MINT} Attempting to mint '${name}' (from ${jsonFileName})...`);
+        console.log(`      ${LOG_PREFIXES.INFO} Token URI to be stored: ${tokenUriForContract}`);
 
         try {
             const tx = await pokemonCard.safeMint(
@@ -157,7 +195,7 @@ async function main() {
                 type2,
                 special
             );
-            console.log(`      ⏳ Transaction sent: ${tx.hash}. Waiting for confirmation...`);
+            console.log(`      ${LOG_PREFIXES.TX} Transaction sent: ${tx.hash}. Waiting for confirmation...`);
             const receipt = await tx.wait(); // Wait for 1 confirmation by default
             const gasUsed = receipt.gasUsed;
             let mintedTokenId = "N/A (Event not found or parsed)";
@@ -174,28 +212,28 @@ async function main() {
             }
 
             if (mintedTokenId === currentFileNumber.toString()) {
-                console.log(`   ✅ Successfully minted '${name}'! Token ID: ${mintedTokenId} (Matches expected metadata file number). Gas Used: ${gasUsed.toString()}`);
+                console.log(`   ${LOG_PREFIXES.SUCCESS} Successfully minted '${name}'! Token ID: ${mintedTokenId} (Matches expected metadata file number). Gas Used: ${gasUsed.toString()}`);
             } else {
                 // Critical Mismatch: Throw an error to stop the script.
                 const errorMessage = `CRITICAL MISMATCH: Minted Token ID '${mintedTokenId}' does not match the expected metadata file number '${currentFileNumber}' for Pokémon '${name}'. Halting script.`;
-                console.error(`   ❌ ${errorMessage}`);
+                console.error(`   ${LOG_PREFIXES.CRITICAL} ${errorMessage}`);
                 throw new Error(errorMessage);
             }
         } catch (error) {
-            console.error(`   ❌ Failed to mint '${name}' (from ${jsonFileName}):`);
+            console.error(`   ${LOG_PREFIXES.ERROR} Failed to mint '${name}' (from ${jsonFileName}):`);
             const reason = error.reason || (error.data ? error.data.message : null) || error.message;
-            console.error(`      Error Reason: ${reason || "Unknown error"}`);
+            console.error(`      ${LOG_PREFIXES.ERROR} Reason: ${reason || "Unknown error"}`);
         }
         console.log("----------------------------------------------------");
     }
 
-    console.log("\n🎉🎉🎉 Batch minting process complete! 🎉🎉🎉");
+    console.log(`\n🎉🎉🎉 ${LOG_PREFIXES.SUCCESS} Batch minting process complete! 🎉🎉🎉`);
 }
 
 main()
     .then(() => process.exit(0))
     .catch((error) => {
-        console.error("\n❌❌❌ Unhandled critical error in script execution: ❌❌❌");
+        console.error(`\n${LOG_PREFIXES.CRITICAL} Unhandled critical error in script execution:`);
         console.error(error);
         process.exit(1);
     });

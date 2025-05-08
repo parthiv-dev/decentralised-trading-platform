@@ -5,7 +5,7 @@ const path = require('path');
 
 async function main() {
   // Get the deployer account
-  const [deployer] = await hre.ethers.getSigners();
+  const [deployer] = await hre.ethers.getSigners();  // Get the first signer (deployer) from Hardhat
 
   console.log("Deploying contracts with the account:", deployer.address);
 
