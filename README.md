@@ -1,9 +1,9 @@
-# Decentralized Trading Platform
+# Decentralised Trading Platform
 
 ## Checklist (to be removed later)
 See TODO in each paragraph!
 
-**Have to implement AND explain each criteria in at least 1 paragraph**
+**Have to implement AND explain each criterion in at least 1 paragraph**
 
 ## Table of Contents
 TODO
@@ -13,7 +13,7 @@ TODO
 
 ## Introduction
 
-In this project, we developed a decentralized application (dApp) for trading Pokémon cards. The project integrates **blockchain technology** with **NFT concepts**, requiring implementation of [smart contracts](#smart-contracts), [frontend development](#frontend-development), and **Web3 technologies integration**. We deliver a complete, functional trading platform deployed on a local testnet. 
+In this project, we developed a decentralised application (dApp) for trading Pokémon cards. The project integrates **blockchain technology** with **NFT concepts**, requiring implementation of [smart contracts](#smart-contracts), [frontend development](#frontend-development), and **Web3 technologies integration**. We deliver a complete, functional trading platform deployed on a local testnet. 
 
 In this [README](README.md) we explain how set up and use our trading platform in [Setup Instructions](#setup-instructions) a provide a [technical documentation](#technical-documentation) of individual files (the essential part of every README). 
 
@@ -23,7 +23,7 @@ We highly encourage the reader to also read our [WIKI](WIKI.md) where we delve d
 
 To run the Pokémon Card dApp locally, follow the steps in this section.
 
-> Note: We faced some issues when trying to deploy and run on FireFox. We suggest that the user uses Chromium-based browsers.
+> Note: We faced some issues when trying to deploy and run on Firefox. We suggest that the user uses Chromium-based browsers.
 
 
 ### Prerequisites
@@ -36,15 +36,13 @@ To run the Pokémon Card dApp locally, follow the steps in this section.
 
 ### 1. Backend (Smart Contracts)
 
-> **Tip:** We recommend the user to have atleast 4 seperate windows when setting up the local deployment:
+> **Tip:** We recommend the user to have at least 3 separate windows when setting up the local deployment:
 > - Setup Instructions (this page)
-> - A browser window with the MetaMask account open in full-screen mode
-> - Terminal 1
-> - Terminal 2
-
+> - A browser window with the MetaMask account open in full-window mode
+> - Terminal (with multiple tabs)
 > TODO: Insert Photo
 
-First, clone/unzip the project folder and perform following commands in the **project root** directory:
+First, clone/unzip the project folder and perform the following commands in the **project root** directory:
 
 ```bash
 npm install
@@ -108,7 +106,7 @@ Open your browser at [http://localhost:3000](http://localhost:3000) to interact 
 - Click the **network selector button** in the top-left corner.
 - Click on **+ Add a custom network**
 
-Fill in following specifications:
+Fill in the following specifications:
 - **Network Name:** Hardhat Local
 - **Default RPC URL:** [http://127.0.0.1:8545](http://127.0.0.1:8545)
 - **Chain ID:** 31337
@@ -121,7 +119,7 @@ Now do the following:
 
 ##### 3.2. **Import Pre-Funded Accounts**
 
-> **Tip:** If the user would like to simulate the interactive multi-user funtionalities, we recommend to create multiple browser profiles, a metamask wallet for each browser profiles and open instances of [http://localhost:3000](http://localhost:3000) in each browser profile:
+> **Tip:** If the user would like to simulate the interactive multi-user functionalities, we recommend creating multiple browser profiles, a metamask wallet for each browser profile and opening instances of [http://localhost:3000](http://localhost:3000) in each browser profile:
 
 > TODO: Add picture
 
@@ -131,12 +129,12 @@ Now do the following:
 **In each browser profile:**
 
 1. Open Metamask and click on your current account (**Account 1** on the top by default). 
-2. A page with the title "Select Account" should open up. On this page select **+ Add account or hardware wallet**. 
+2. A page with the title "Select Account" should open up. On this page, select **+ Add account or hardware wallet**. 
 3. Select **Import account**
 4. Choose **Private Key** and paste one of the keys below (or any other private key from your Hardhat node terminal output).
-5. Switch to newly created account
+5. Switch to the newly created account
 
-> **Tip:** **Account #0** is the deployer and has administrative privileges (such as minting, authorizing other minters etc.). We recommend to selecting **Account #0** for the first browser profile.
+> **Tip:** **Account #0** is the deployer and has administrative privileges (such as minting, authorising other minters, etc.). We recommend selecting **Account #0** for the first browser profile.
 
 **Available accounts:**
 
@@ -157,7 +155,7 @@ MetaMask will now be connected to your local blockchain network named "Hardhat L
 - Go to [http://localhost:3000](http://localhost:3000)
 - You should see 4 buttons under **Connect**
 - Select **MetaMask**
-- Under Use your enabled networks click **Edit**
+- Under Use your enabled networks, click **Edit**
 - Select **Hardhat Local** only. You do not need any other networks.
  **Connect** your MetaMask with our Pokemon trading platform residing on [localhost](http://localhost:3000)
 
@@ -165,44 +163,44 @@ MetaMask will now be connected to your local blockchain network named "Hardhat L
 
 At the very top you are going to see some basic account and wallet information. Here you can also connect and disconnect you wallet.
 
-Next you will see the title, as well as your Pokemon contract and Trading Platform contract address. 
+Next, you will see the title, as well as your Pokémon contract and Trading Platform contract address. 
 
-Underneath you will find following tabs: 
+Underneath you will find the following tabs: 
 - My Cards & Mint
 - Marketplace
 - Auctions
 - Admin Panel (only for the contract owner at address #0)
 
-We encourage the user to the test the intuitive functionalities of the trading platform without providing step-by-step instructions!
+We encourage the user to test the intuitive functionalities of the trading platform without providing step-by-step instructions!
 
 #### My Cards & Mint
 
 Here you can:
-- Mint new Pokemons (if you are authorized)
-- View your Pokemon Cards
-- Manage your cards i.e. list them for fixed price sale or auctions
-- Withdraw funds you made from (re-)selling Pokemons
+- Mint new Pokémon (if the user is the owner of the contract)
+- View your Pokémon Cards
+- Manage your cards, i.e. list them for fixed price sale or auctions
+- Withdraw funds you made from (re-)selling Pokémons
 
 #### Marketplace
 
 Here you can:
-- View Pokemons which have been listed for fixed price sale
-- Buy Pokemons which other users have listed for fixed price sale
+- View Pokémon which have been listed for fixed price sale
+- Buy Pokémon which other users have listed for fixed price sale
 
 #### Auctions
 
 Here you can:
-- View Pokemons which have been listed for the auction
-- Bid for Pokemons which other users have listed for fixed price sale
+- View Pokémon which have been listed for the auction
+- Bid for Pokémon which other users have listed for fixed price sale
 - Close the auction after expiry of the auction duration
 
 >**Tip**: Set a low auction duration (e.g. 1 minute)
 
 #### Admin Panel (only for the contract owner)
 
-Here the owner of the contract can 
-- add/remove minters
-- pause/unpause the contract for security purposes
+Here, the owner of the contract can 
+- add/remove `_minters`
+- Pause/unpause the contract for security purposes
 
 
 ---
@@ -225,7 +223,7 @@ To batch mint Pokémon Card NFTs up to ID 100, run:
 npx hardhat run scripts/BatchMintFromIPFS.js --network localhost
 ```
 
-This script will mint all cards from ID 1 through 100 using metadata on IPFS. This will allow the user to view all 100 Pokemons on the trading platform without having to mint each one individually!
+This script will mint all cards from ID 1 through 100 using metadata on IPFS. This will allow the user to view all 100 Pokémons on the trading platform without having to mint each one individually!
 
 
 ## Technical Documentation
@@ -240,7 +238,7 @@ We have focussed on **simplicity** and intuitive understanding of the contracts 
 
 #### PokemonCard Contract
 
-[PokemonCard.sol](contracts\PokemonCard.sol) is a NFT contract for Pokemons based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition we used following extensions:
+[PokemonCard.sol](contracts\PokemonCard.sol) is a NFT contract for Pokemons based on the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721) contract for non-fungible tokens. In addition, we used the following extensions:
 
 
 - [ERC721Burnable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Burnable): To enable token holders destroy their tokens.
@@ -264,14 +262,14 @@ To be able to store **comprehensive metadata for Pokemon characteristics** we de
     }
 ```
 
-This struct was populated when minting a Pokemon NFT token by calling constructor of [PokemonCard.sol](contracts\PokemonCard.sol). In addition, we stored the metadata and images of Pokemons in a decentralized IPFS. More on this in the section [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
+This struct was populated when minting a Pokemon NFT token by calling the constructor of [PokemonCard.sol](contracts\PokemonCard.sol). In addition, we stored the metadata and images of Pokémons in a decentralised IPFS. More on this in the section [IPFS integration for metadata storage](#ipfs-integration-for-metadata-storage)
 
 **Access control** is ensured by: 
 - the in-built `Ownable` (modifier)
 - an auxiliary mapping `_minters` which maps user addresses to bool (true = allowed to mint; false = not allowed to mint)
-- a modifier `onlyAuthorized` which check if either of the above is true for a given user
+- a modifier `onlyAuthorized` which checks if either of the above is true for a given user
 
-**Secure minting** has been implemented by the use of the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721). Specifically we used the modified the `safeMint()` function.
+**Secure minting** has been implemented by the use of the [OpenZeppelin ERC271 contract](https://docs.openzeppelin.com/contracts/4.x/erc721). Specifically, we used the modified `safeMint()` function.
 
 #### TradingPlatform Contract
 
@@ -281,11 +279,11 @@ TODO for 3.1. Smart Contracts:
 - Fixed-price sales
 - Auctions
 - Secure withdrawal patterns
-- Understanding of smart contract optimization
+- Understanding of smart contract optimisation
 - Security best practices in implementation
 - Simplicity
 
-The [TradingPlatform.sol](contracts\TradingPlatform.sol) is as the name says a contract for the trading platform. tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users are able to securely withdraw their earned funds which they have earned by (re-)selling NFT tokens) to their wallet.
+The [TradingPlatform.sol](contracts\TradingPlatform.sol) is, as the name say,s a contract for the trading platform. Tokens can be listed for fixed-price sales and auctions. Consequently, other users can buy and bid respectively. Additionally, users can securely withdraw their earned funds, which they have earned by (re-)selling NFT tokens) to their wallet.
 
 We have implemented **best practices for security** by making use of existing OpenZeppelin contracts:
 - [IERC721Receiver](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721Receiver): To prevent tokens from becoming forever locked in contracts and support safe transfer of tokens from buyer to seller.
@@ -294,7 +292,7 @@ We have implemented **best practices for security** by making use of existing Op
 - [ERC721Pausable](https://docs.openzeppelin.com/contracts/5.x/api/token/erc721#ERC721Pausable): To allow privileged accounts to pause the functionality marked as `whenNotPaused`. This is useful for emergency response when facing security issues.
 - `Ownable`: To enable the contract owner of [TradingPlatform.sol](contracts\TradingPlatform.sol) to mint pokemon token i.e. authorize a single account for all privileged actions.
 
-> **Difference bettween ERC721 & IERC721**: [ERC271](https://docs.openzeppelin.com/contracts/4.x/erc721) is the actual implementation standard for non-fungible tokens (NFTs), defining the rules and functions a smart contract must implement. [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721), on the other hand, is the interface that specifies the functions and events expected to be present in a contract adhering to the ERC721 standard
+> **Difference between ERC721 & IERC721**: [ERC271](https://docs.openzeppelin.com/contracts/4.x/erc721) is the actual implementation standard for non-fungible tokens (NFTs), defining the rules and functions a smart contract must implement. [IERC721](https://docs.openzeppelin.com/contracts/3.x/api/token/erc721#IERC721), on the other hand, is the interface that specifies the functions and events expected to be present in a contract adhering to the ERC721 standard
 
 ### Interaction between PokemonCard & TradingPlatform
 
@@ -310,7 +308,7 @@ TODO for 3.2 Front Development:
 - Proper Web3 integration through event listeners for contract updates, transaction  handling and wallet integration
 
 TODO for 4.1 Development Environment:
-- development environment setup should be clearly documented to ensure reproducibility
+- The development environment setup should be clearly documented to ensure reproducibility
 
 MATTEO!!!
 
@@ -318,15 +316,15 @@ MATTEO!!!
 ### Security Considerations
 
 - Protection against Reentrancy attacks (DONE)
-- Access control using function modifiers and role-base access where necessary (DONE)
-- IF front-running is concern (IS IT?) => a front-running prevention e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive operations (NOT DONE)
+- Access control using function modifiers and role-based access where necessary (DONE)
+- IF front-running isa  concern (IS IT?) => a front-running prevention, e.g. through the implementation of commit-reveal schemes or similar mechanisms for sensitive operations (NOT DONE)
 
 As mentioned in section on the [TradingPlatform Contract](#tradingplatform-contract), we protected the trading platform against **reentrancy attacks** by making use of OpenZeppelin's [ReentrancyGuard](https://docs.openzeppelin.com/contracts/4.x/api/security#ReentrancyGuard).
 
 We also implement **access control** in [PokemonCard.sol](contracts\PokemonCard.sol) by using: 
 - the in-built `Ownable` (modifier)
 - an auxiliary mapping `_minters` which maps user addresses to bool (true = allowed to mint; false = not allowed to mint)
-- a modifier `onlyAuthorized` which check if either of the above is true for a given user
+- a modifier `onlyAuthorized` which checks if either of the above is true for a given user
 
 ### Advanced Enhancements
 
@@ -334,16 +332,16 @@ We also implement **access control** in [PokemonCard.sol](contracts\PokemonCard.
 
 To be able to view images of Pokemons on the web-based trading trading platform we decided to integrate IPFS metadata storage. 
 
-First, we searched for a complete data set of open-source Pokemon pictures. We found a [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) with 898 images of all the Pokemons taken from the Pokedex database. Each image is of the format "name.png". We decide that we want to work with the first 100 (alphabetic) Pokemons for simplicity. 
+First, we searched for a complete data set of open-source Pokémon pictures. We found a [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) with 898 images of all the Pokemons taken from the Pokedex database. Each image is of the format "name.png". We decide that we want to work with the first 100 (alphabetic) Pokemons for simplicity. 
 
-We also renamed the original image files from the [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) to "1.png", "2.png" etc. for simplicity later on when we call the files based on the tokenId of the respective pokemon mint. This was done using a [Python script](data\pokemon_images\number_img.py). We then uploaded the [folder](data\pokemon_images\byNumber) consisting of the 100 numbered images to the [Pinata Cloud](https://pinata.cloud/) for easy access when minting on the blockchain.
+We also renamed the original image files from the [kaggle dataset](https://www.kaggle.com/datasets/arenagrenade/the-complete-pokemon-images-data-set) to "1.png", "2.png", etc, for simplicity later on when we call the files based on the tokenId of the respective pokemon mint. This was done using a [Python script](data\pokemon_images\number_img.py). We then uploaded the [folder](data\pokemon_images\byNumber), consisting of the 100 numbered images, to the [Pinata Cloud](https://pinata.cloud/) for easy access when minting on the blockchain.
 
-For additional metadata for each Pokemon we referred to the [PokeApi](https://pokeapi.co/). We wrote a [Python script](data\pokemon_get_data.py) which gets the metadata based on the filenames of the kaggle image data set and stores the data (numerical and non-numerical characteristics, and the IPFS link for each image) for each Pokemon in JSON files of [OpenSea format](https://docs.opensea.io/docs/metadata-standards). The files are purposefully name as "1.json", "2.json" etc. for same reason as before. The [folder](data\pokemon_metadata) with the JSON files was also uploaded to the [Pinata Cloud](https://pinata.cloud/).
+For additional metadata for each Pokémon we referred to the [PokeApi](https://pokeapi.co/). We wrote a [Python script](data\pokemon_get_data.py) which gets the metadata based on the filenames of the kaggle image data set and stores the data (numerical and non-numerical characteristics, and the IPFS link for each image) for each Pokemon in JSON files of [OpenSea format](https://docs.opensea.io/docs/metadata-standards). The files are purposefully named as "1.json", "2.json", etc. forthe  same reason as before. The [folder](data\pokemon_metadata) with the JSON files was also uploaded to the [Pinata Cloud](https://pinata.cloud/).
 
 
 [Pinata Cloud](https://pinata.cloud/) is a distributed storage platform used e.g. OpenSea to achieve secure, scalable storage with IPFS's decentralized infrastructure.
 
-IMPORTANT NOTE: Since we integrated metadata storage through IPFS there was theoretically no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts\PokemonCard.sol) contract! For simplicity and clarity the Pokemon struct and associated functions where kept to enable proper functioning of the trading platform without IPFS integration. For reference this is the Pokemon struct:
+IMPORTANT NOTE: Since we integrated metadata storage through IPFS, there was theoretically no need to keep the initial Pokemon struct in the [PokemonCard.sol](contracts\PokemonCard.sol) contract! For simplicity and clarity the Pokemon struct and associated functions where kept to enable proper functioning of the trading platform without IPFS integration. For reference, this is the Pokémon struct:
 
 ```
     struct Pokemon {
@@ -358,7 +356,7 @@ IMPORTANT NOTE: Since we integrated metadata storage through IPFS there was theo
     }
 ```
 
-This struct was populated  by the constructor when minting a Pokemon NFT token.
+This struct was populated  by the constructor when minting a Pokémon NFT token.
 
 ## Demonstration
 
@@ -369,49 +367,49 @@ TODO for 3.4 Documentation and Presentation, 4.1 Development Environment
 ## Group Work Specifications
 
 TODO for 6. Group Work Specifications
-- clear documentation required for individual contributions
-- distribution of work should be equitable and clearly documented in the project submissions
+- Clear documentation is required for individual contributions
+- The distribution of work should be equitable and clearly documented in the project submissions
 
 We worked closely together, spending hours on Discord calls to collaborate on this project.
 
 Matteo:
 - Leading frontend development ()
-- Leading making of demonstration video
+- Leading the making of the demonstration video
 
 Parthiv:
 - Leading backend (Solidity contracts, IPFS integration for metadata storage)
-- Leading documentation of codebase and ensuring code quality
+- Leading documentation of the codebase and ensuring code quality
 - Leading documentation of work in [README](README.md) and [WIKI](WIKI.md)
 
 ## Use of GenAI
 TODO for 8. Use of GenAI:
-- indicate which AI tools you have used
+- Indicate which AI tools you have used
 
 We used Github Co-Pilot, Gemini and ChatGPT for various tasks:
 - Understanding of tasks and technical terms in the coursework description
 - Simple code completion (especially for comments)
-- Understanding of code e.g. ERC721 contract of Open Zeppelin thoroughly
-- Finding mistakes in our hand-written code
+- Understanding of code, e.g. ERC721 contract of Open Zeppelin, thoroughly
+- Finding mistakes in our handwritten code
 - Extensively used for JavaScript scripts, test suites, deployment scripts and other work which involves more extensive typing than actual work
 
 We did not use or barely used GenAI for:
-- Implementing the actual contracts e.g. PokemonCard.sol
+- Implementing the actual contracts, e.g. PokemonCard.sol
 - Writing this extensive [README](README.md)
 - Finding the key learning and implementation objectives to be completed in the coursework
 
 ## Code Quality
 
 TODO for 4.2 Code Quality Standards:
-- minimization of code redundancy
+- minimisation of code redundancy
 - proper implementation
 of design patterns
-- code readability and organization
+- code readability and organisation
 - quality of comments and documentation
 - test coverage
 - follow [Official Solidity style guide](https://soliditylang.org/)
-- Proper error handling throughout codebase
+- Proper error handling throughout the codebase
 
-We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We also inspired ourselves from OpenZeppelin's way of commenting e.g. [here](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol).
+We used the [Official Solidity style guide](https://soliditylang.org/) to the best of our abilities to have clean, readable code for the reader. We were also inspired by OpenZeppelin's way of commenting, e.g. [here](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol).
 
 We implemented extensive test coverage for both the PokemonCard and the TradingPlatform contracts in the [test folder](test) to ensure proper functionality of the whole trading system.
 
