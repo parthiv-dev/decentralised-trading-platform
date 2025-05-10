@@ -1,0 +1,35 @@
+{
+    "name": "Aurorus",
+    "description": "The diamond-shaped crystals on its body expel air as cold as -240 degrees Fahrenheit, surrounding its enemies and encasing them in ice.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/35.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Ice"
+        },
+        {
+            "trait_type": "HP",
+            "value": 123
+        },
+        {
+            "trait_type": "Attack",
+            "value": 77
+        },
+        {
+            "trait_type": "Defense",
+            "value": 72
+        },
+        {
+            "trait_type": "Speed",
+            "value": 58
+        },
+        {
+            "trait_type": "Special",
+            "value": 99
+        }
+    ]
+}

@@ -1,0 +1,35 @@
+{
+    "name": "Araquanid",
+    "description": "It delivers headbutts with the water bubble on its head. Small Pok\u00e9mon get sucked into the bubble, where they drown.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/20.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Water"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "HP",
+            "value": 68
+        },
+        {
+            "trait_type": "Attack",
+            "value": 70
+        },
+        {
+            "trait_type": "Defense",
+            "value": 92
+        },
+        {
+            "trait_type": "Speed",
+            "value": 42
+        },
+        {
+            "trait_type": "Special",
+            "value": 50
+        }
+    ]
+}

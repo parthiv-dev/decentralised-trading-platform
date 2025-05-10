@@ -1,0 +1,35 @@
+{
+    "name": "Bronzor",
+    "description": "Implements shaped like it were discovered in ancient tombs. It is unknown if they are related.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/79.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Steel"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Psychic"
+        },
+        {
+            "trait_type": "HP",
+            "value": 57
+        },
+        {
+            "trait_type": "Attack",
+            "value": 24
+        },
+        {
+            "trait_type": "Defense",
+            "value": 86
+        },
+        {
+            "trait_type": "Speed",
+            "value": 23
+        },
+        {
+            "trait_type": "Special",
+            "value": 24
+        }
+    ]
+}

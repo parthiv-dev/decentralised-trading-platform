@@ -1,0 +1,31 @@
+{
+    "name": "Audino",
+    "description": "It touches others with the feelers on its ears, using the sound of their heartbeats to tell how they are feeling.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/34.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "HP",
+            "value": 103
+        },
+        {
+            "trait_type": "Attack",
+            "value": 60
+        },
+        {
+            "trait_type": "Defense",
+            "value": 86
+        },
+        {
+            "trait_type": "Speed",
+            "value": 50
+        },
+        {
+            "trait_type": "Special",
+            "value": 60
+        }
+    ]
+}

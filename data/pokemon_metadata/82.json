@@ -1,0 +1,31 @@
+{
+    "name": "Buizel",
+    "description": "It has a flotation sac that is like an inflatable collar. It floats on water with its head out.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/82.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Water"
+        },
+        {
+            "trait_type": "HP",
+            "value": 55
+        },
+        {
+            "trait_type": "Attack",
+            "value": 65
+        },
+        {
+            "trait_type": "Defense",
+            "value": 35
+        },
+        {
+            "trait_type": "Speed",
+            "value": 85
+        },
+        {
+            "trait_type": "Special",
+            "value": 60
+        }
+    ]
+}

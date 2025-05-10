@@ -1,0 +1,35 @@
+{
+    "name": "Carvanha",
+    "description": "CARVANHA\u2019s strongly developed jaws and its sharply pointed fangs pack the destructive power to rip out boat hulls. Many boats have been attacked and sunk by this POK\u00e9MON.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/97.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Water"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Dark"
+        },
+        {
+            "trait_type": "HP",
+            "value": 45
+        },
+        {
+            "trait_type": "Attack",
+            "value": 90
+        },
+        {
+            "trait_type": "Defense",
+            "value": 20
+        },
+        {
+            "trait_type": "Speed",
+            "value": 65
+        },
+        {
+            "trait_type": "Special",
+            "value": 65
+        }
+    ]
+}

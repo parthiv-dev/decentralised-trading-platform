@@ -1,0 +1,35 @@
+{
+    "name": "Barbaracle",
+    "description": "When they evolve, two Binacle multiply into seven. They fight with the power of seven Binacle.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/44.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Water"
+        },
+        {
+            "trait_type": "HP",
+            "value": 72
+        },
+        {
+            "trait_type": "Attack",
+            "value": 105
+        },
+        {
+            "trait_type": "Defense",
+            "value": 115
+        },
+        {
+            "trait_type": "Speed",
+            "value": 68
+        },
+        {
+            "trait_type": "Special",
+            "value": 54
+        }
+    ]
+}

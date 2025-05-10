@@ -1,0 +1,31 @@
+{
+    "name": "Azelf",
+    "description": "Known as \u201cThe Being of Willpower.\u201d It sleeps at the bottom of a lake to keep the world in balance.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/38.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Psychic"
+        },
+        {
+            "trait_type": "HP",
+            "value": 75
+        },
+        {
+            "trait_type": "Attack",
+            "value": 125
+        },
+        {
+            "trait_type": "Defense",
+            "value": 70
+        },
+        {
+            "trait_type": "Speed",
+            "value": 115
+        },
+        {
+            "trait_type": "Special",
+            "value": 125
+        }
+    ]
+}

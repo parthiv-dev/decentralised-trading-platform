@@ -1,0 +1,35 @@
+{
+    "name": "Archeops",
+    "description": "They are intelligent and will cooperate to catch prey. From the ground, they use a running start to take flight.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/25.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Flying"
+        },
+        {
+            "trait_type": "HP",
+            "value": 75
+        },
+        {
+            "trait_type": "Attack",
+            "value": 140
+        },
+        {
+            "trait_type": "Defense",
+            "value": 65
+        },
+        {
+            "trait_type": "Speed",
+            "value": 110
+        },
+        {
+            "trait_type": "Special",
+            "value": 112
+        }
+    ]
+}

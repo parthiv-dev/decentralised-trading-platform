@@ -1,0 +1,35 @@
+{
+    "name": "Cacturne",
+    "description": "During the daytime, CACTURNE remains unmoving so that it does not lose any moisture to the harsh desert sun. This POK\u00e9MON becomes active at night when the temperature drops.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/90.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Dark"
+        },
+        {
+            "trait_type": "HP",
+            "value": 70
+        },
+        {
+            "trait_type": "Attack",
+            "value": 115
+        },
+        {
+            "trait_type": "Defense",
+            "value": 60
+        },
+        {
+            "trait_type": "Speed",
+            "value": 55
+        },
+        {
+            "trait_type": "Special",
+            "value": 115
+        }
+    ]
+}

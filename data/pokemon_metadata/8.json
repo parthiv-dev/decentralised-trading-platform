@@ -1,0 +1,31 @@
+{
+    "name": "Aipom",
+    "description": "Its tail is so powerful that it can use it to grab a tree branch and hold itself up in the air.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/8.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "HP",
+            "value": 55
+        },
+        {
+            "trait_type": "Attack",
+            "value": 70
+        },
+        {
+            "trait_type": "Defense",
+            "value": 55
+        },
+        {
+            "trait_type": "Speed",
+            "value": 85
+        },
+        {
+            "trait_type": "Special",
+            "value": 40
+        }
+    ]
+}

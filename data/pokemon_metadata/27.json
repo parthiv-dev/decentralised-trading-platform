@@ -1,0 +1,35 @@
+{
+    "name": "Arctozolt",
+    "description": "The shaking of its freezing upper half is what generates its electricity. It has a hard time walking around.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/27.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Electric"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Ice"
+        },
+        {
+            "trait_type": "HP",
+            "value": 90
+        },
+        {
+            "trait_type": "Attack",
+            "value": 100
+        },
+        {
+            "trait_type": "Defense",
+            "value": 90
+        },
+        {
+            "trait_type": "Speed",
+            "value": 55
+        },
+        {
+            "trait_type": "Special",
+            "value": 90
+        }
+    ]
+}

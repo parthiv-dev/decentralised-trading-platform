@@ -1,0 +1,35 @@
+{
+    "name": "Azurill",
+    "description": "A Pok\u00e9mon that lives by water. It moves quickly on land by bouncing on its big tail.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/40.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Fairy"
+        },
+        {
+            "trait_type": "HP",
+            "value": 50
+        },
+        {
+            "trait_type": "Attack",
+            "value": 20
+        },
+        {
+            "trait_type": "Defense",
+            "value": 40
+        },
+        {
+            "trait_type": "Speed",
+            "value": 20
+        },
+        {
+            "trait_type": "Special",
+            "value": 20
+        }
+    ]
+}

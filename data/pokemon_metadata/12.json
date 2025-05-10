@@ -1,0 +1,35 @@
+{
+    "name": "Altaria",
+    "description": "ALTARIA dances and wheels through the sky among billowing, cotton-like clouds. By singing melodies in its crystal-clear voice, this POK\u00e9MON makes its listeners experience dreamy wonderment.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/12.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Dragon"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Flying"
+        },
+        {
+            "trait_type": "HP",
+            "value": 75
+        },
+        {
+            "trait_type": "Attack",
+            "value": 70
+        },
+        {
+            "trait_type": "Defense",
+            "value": 90
+        },
+        {
+            "trait_type": "Speed",
+            "value": 80
+        },
+        {
+            "trait_type": "Special",
+            "value": 70
+        }
+    ]
+}

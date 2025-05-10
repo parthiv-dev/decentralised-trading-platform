@@ -1,0 +1,31 @@
+{
+    "name": "Bonsly",
+    "description": "It looks as if it is always crying. It is actually adjusting its body\u2019s fluid levels by eliminating excess.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/71.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "HP",
+            "value": 50
+        },
+        {
+            "trait_type": "Attack",
+            "value": 80
+        },
+        {
+            "trait_type": "Defense",
+            "value": 95
+        },
+        {
+            "trait_type": "Speed",
+            "value": 10
+        },
+        {
+            "trait_type": "Special",
+            "value": 10
+        }
+    ]
+}

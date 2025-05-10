@@ -1,0 +1,31 @@
+{
+    "name": "Alakazam",
+    "description": "Its brain can out\u00ad perform a super\u00ad computer. Its intelligence quotient is said to be 5,000.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/9.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Psychic"
+        },
+        {
+            "trait_type": "HP",
+            "value": 55
+        },
+        {
+            "trait_type": "Attack",
+            "value": 50
+        },
+        {
+            "trait_type": "Defense",
+            "value": 45
+        },
+        {
+            "trait_type": "Speed",
+            "value": 120
+        },
+        {
+            "trait_type": "Special",
+            "value": 135
+        }
+    ]
+}

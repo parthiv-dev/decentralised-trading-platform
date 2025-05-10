@@ -1,0 +1,31 @@
+{
+    "name": "Carnivine",
+    "description": "It attracts prey with its sweet- smelling saliva, then chomps down. It takes a whole day to eat prey.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/95.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "HP",
+            "value": 74
+        },
+        {
+            "trait_type": "Attack",
+            "value": 100
+        },
+        {
+            "trait_type": "Defense",
+            "value": 72
+        },
+        {
+            "trait_type": "Speed",
+            "value": 46
+        },
+        {
+            "trait_type": "Special",
+            "value": 90
+        }
+    ]
+}

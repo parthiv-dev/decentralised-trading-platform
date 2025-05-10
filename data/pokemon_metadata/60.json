@@ -1,0 +1,31 @@
+{
+    "name": "Bidoof",
+    "description": "With nerves of steel, nothing can perturb it. It is more agile and active than it appears.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/60.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "HP",
+            "value": 59
+        },
+        {
+            "trait_type": "Attack",
+            "value": 45
+        },
+        {
+            "trait_type": "Defense",
+            "value": 40
+        },
+        {
+            "trait_type": "Speed",
+            "value": 31
+        },
+        {
+            "trait_type": "Special",
+            "value": 35
+        }
+    ]
+}

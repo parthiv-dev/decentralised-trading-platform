@@ -1,0 +1,31 @@
+{
+    "name": "Burmy-plant",
+    "description": "Placeholder description for Burmy-plant.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/86.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Unknown"
+        },
+        {
+            "trait_type": "HP",
+            "value": 0
+        },
+        {
+            "trait_type": "Attack",
+            "value": 0
+        },
+        {
+            "trait_type": "Defense",
+            "value": 0
+        },
+        {
+            "trait_type": "Speed",
+            "value": 0
+        },
+        {
+            "trait_type": "Special",
+            "value": 0
+        }
+    ]
+}

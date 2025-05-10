@@ -1,0 +1,31 @@
+{
+    "name": "Avalugg",
+    "description": "Its ice-covered body is as hard as steel. Its cumbersome frame crushes anything that stands in its way.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/36.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Ice"
+        },
+        {
+            "trait_type": "HP",
+            "value": 95
+        },
+        {
+            "trait_type": "Attack",
+            "value": 117
+        },
+        {
+            "trait_type": "Defense",
+            "value": 184
+        },
+        {
+            "trait_type": "Speed",
+            "value": 28
+        },
+        {
+            "trait_type": "Special",
+            "value": 44
+        }
+    ]
+}

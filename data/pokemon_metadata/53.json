@@ -1,0 +1,31 @@
+{
+    "name": "Beheeyem",
+    "description": "It can manipulate an opponent\u2019s memory. Apparently, it communicates by flashing its three different-colored fingers.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/53.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Psychic"
+        },
+        {
+            "trait_type": "HP",
+            "value": 75
+        },
+        {
+            "trait_type": "Attack",
+            "value": 75
+        },
+        {
+            "trait_type": "Defense",
+            "value": 75
+        },
+        {
+            "trait_type": "Speed",
+            "value": 40
+        },
+        {
+            "trait_type": "Special",
+            "value": 125
+        }
+    ]
+}

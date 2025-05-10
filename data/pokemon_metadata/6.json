@@ -1,0 +1,35 @@
+{
+    "name": "Aerodactyl",
+    "description": "A Pok\u00e9mon that roamed the skies in the dinosaur era. Its teeth are like saw blades.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/6.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Flying"
+        },
+        {
+            "trait_type": "HP",
+            "value": 80
+        },
+        {
+            "trait_type": "Attack",
+            "value": 105
+        },
+        {
+            "trait_type": "Defense",
+            "value": 65
+        },
+        {
+            "trait_type": "Speed",
+            "value": 130
+        },
+        {
+            "trait_type": "Special",
+            "value": 60
+        }
+    ]
+}

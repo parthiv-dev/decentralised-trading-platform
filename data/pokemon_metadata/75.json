@@ -1,0 +1,35 @@
+{
+    "name": "Braviary",
+    "description": "They fight for their friends without any thought about danger to themselves. One can carry a car while flying.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/75.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Normal"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Flying"
+        },
+        {
+            "trait_type": "HP",
+            "value": 100
+        },
+        {
+            "trait_type": "Attack",
+            "value": 123
+        },
+        {
+            "trait_type": "Defense",
+            "value": 75
+        },
+        {
+            "trait_type": "Speed",
+            "value": 80
+        },
+        {
+            "trait_type": "Special",
+            "value": 57
+        }
+    ]
+}

@@ -1,0 +1,31 @@
+{
+    "name": "Arbok",
+    "description": "It is rumored that the ferocious warning markings on its belly differ from area to area.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/21.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Poison"
+        },
+        {
+            "trait_type": "HP",
+            "value": 60
+        },
+        {
+            "trait_type": "Attack",
+            "value": 95
+        },
+        {
+            "trait_type": "Defense",
+            "value": 69
+        },
+        {
+            "trait_type": "Speed",
+            "value": 80
+        },
+        {
+            "trait_type": "Special",
+            "value": 65
+        }
+    ]
+}

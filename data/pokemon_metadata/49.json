@@ -1,0 +1,31 @@
+{
+    "name": "Bayleef",
+    "description": "The scent of spices comes from around its neck. Somehow, sniffing it makes you want to fight.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/49.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Grass"
+        },
+        {
+            "trait_type": "HP",
+            "value": 60
+        },
+        {
+            "trait_type": "Attack",
+            "value": 62
+        },
+        {
+            "trait_type": "Defense",
+            "value": 80
+        },
+        {
+            "trait_type": "Speed",
+            "value": 60
+        },
+        {
+            "trait_type": "Special",
+            "value": 63
+        }
+    ]
+}

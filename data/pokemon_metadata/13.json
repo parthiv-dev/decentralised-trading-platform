@@ -1,0 +1,35 @@
+{
+    "name": "Amaura",
+    "description": "This ancient Pok\u00e9mon was restored from part of its body that had been frozen in ice for over 100 million years.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/13.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Ice"
+        },
+        {
+            "trait_type": "HP",
+            "value": 77
+        },
+        {
+            "trait_type": "Attack",
+            "value": 59
+        },
+        {
+            "trait_type": "Defense",
+            "value": 50
+        },
+        {
+            "trait_type": "Speed",
+            "value": 46
+        },
+        {
+            "trait_type": "Special",
+            "value": 67
+        }
+    ]
+}

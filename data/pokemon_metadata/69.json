@@ -1,0 +1,31 @@
+{
+    "name": "Boldore",
+    "description": "When it overflows with power, the orange crystal on its body glows. It looks for underground water in caves.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/69.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "HP",
+            "value": 70
+        },
+        {
+            "trait_type": "Attack",
+            "value": 105
+        },
+        {
+            "trait_type": "Defense",
+            "value": 105
+        },
+        {
+            "trait_type": "Speed",
+            "value": 20
+        },
+        {
+            "trait_type": "Special",
+            "value": 50
+        }
+    ]
+}

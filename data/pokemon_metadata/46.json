@@ -1,0 +1,31 @@
+{
+    "name": "Barraskewda",
+    "description": "This Pok\u00e9mon has a jaw that\u2019s as sharp as a spear and as strong as steel. Apparently Barraskewda\u2019s flesh is surprisingly tasty, too.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/46.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Water"
+        },
+        {
+            "trait_type": "HP",
+            "value": 61
+        },
+        {
+            "trait_type": "Attack",
+            "value": 123
+        },
+        {
+            "trait_type": "Defense",
+            "value": 60
+        },
+        {
+            "trait_type": "Speed",
+            "value": 136
+        },
+        {
+            "trait_type": "Special",
+            "value": 60
+        }
+    ]
+}

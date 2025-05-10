@@ -1,0 +1,35 @@
+{
+    "name": "Ariados",
+    "description": "It spins string not only from its rear but also from its mouth. It is hard to tell which end is which.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/28.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Bug"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Poison"
+        },
+        {
+            "trait_type": "HP",
+            "value": 70
+        },
+        {
+            "trait_type": "Attack",
+            "value": 90
+        },
+        {
+            "trait_type": "Defense",
+            "value": 70
+        },
+        {
+            "trait_type": "Speed",
+            "value": 40
+        },
+        {
+            "trait_type": "Special",
+            "value": 60
+        }
+    ]
+}

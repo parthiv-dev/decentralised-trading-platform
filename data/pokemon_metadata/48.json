@@ -1,0 +1,35 @@
+{
+    "name": "Bastiodon",
+    "description": "Any frontal attack is repulsed. It is a docile Pok\u00e9mon that feeds on grass and berries.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/48.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Steel"
+        },
+        {
+            "trait_type": "HP",
+            "value": 60
+        },
+        {
+            "trait_type": "Attack",
+            "value": 52
+        },
+        {
+            "trait_type": "Defense",
+            "value": 168
+        },
+        {
+            "trait_type": "Speed",
+            "value": 30
+        },
+        {
+            "trait_type": "Special",
+            "value": 47
+        }
+    ]
+}

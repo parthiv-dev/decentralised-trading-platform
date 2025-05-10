@@ -1,0 +1,31 @@
+{
+    "name": "Arrokuda",
+    "description": "If it sees any movement around it, this Pok\u00e9mon charges for it straightaway, leading with its sharply pointed jaw. It\u2019s very proud of that jaw.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/32.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Water"
+        },
+        {
+            "trait_type": "HP",
+            "value": 41
+        },
+        {
+            "trait_type": "Attack",
+            "value": 63
+        },
+        {
+            "trait_type": "Defense",
+            "value": 40
+        },
+        {
+            "trait_type": "Speed",
+            "value": 66
+        },
+        {
+            "trait_type": "Special",
+            "value": 40
+        }
+    ]
+}

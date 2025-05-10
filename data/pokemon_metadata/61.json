@@ -1,0 +1,35 @@
+{
+    "name": "Binacle",
+    "description": "Two Binacle live together on one rock. When they fight, one of them will move to a different rock.",
+    "image": "ipfs://bafybeif5inisqdaiu7kbv7gnwe6zbwpvr4kr5wuiebfb6cidaq6ipxwbua/61.png",
+    "attributes": [
+        {
+            "trait_type": "Type 1",
+            "value": "Rock"
+        },
+        {
+            "trait_type": "Type 2",
+            "value": "Water"
+        },
+        {
+            "trait_type": "HP",
+            "value": 42
+        },
+        {
+            "trait_type": "Attack",
+            "value": 52
+        },
+        {
+            "trait_type": "Defense",
+            "value": 67
+        },
+        {
+            "trait_type": "Speed",
+            "value": 50
+        },
+        {
+            "trait_type": "Special",
+            "value": 39
+        }
+    ]
+}
